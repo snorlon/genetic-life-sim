@@ -1,0 +1,51 @@
+Goal: Evolution simulator
+
+Program will manage a diverse simulated ecosystem
+	Program will allow divergent evolution
+	Program will allow extinction
+	Program will target a stable ecosystem
+		In the event that it cannot be stable, it will target a stable diversity
+	Program will minimize time spent per generation
+	Program will not restrict growth of populations
+	
+	Program creatures will be divided by Carnivore, Herbivore, Plant, and Omnivore
+	Carnivores
+		Carnivores will feed only on omnivores, carnivores, and herbivores
+		Carnivores will have moderate food requirements
+	Herbivores
+		Herbivores will only eat plants
+		Herbivores will requires less food to survive
+	Plants
+		Plants will only subsist on "sun", and as such have a fixed food consumption
+	Omnivores
+		Omnivores will share attributes of both carnivores and herbivores
+		
+	All attacking/consumptions/death/breeding will be controlled by dice rolling
+		This will emulate a random factor to every outcome
+		Randomness will play only a supporting role to all outcomes
+		
+		
+
+
+Tensorflow doesn't work, need to create own genetic algorithm
+	Multiple instances of a "species"?
+	Only defining nature of a species is its stats
+	Corresponding name based on the "DNA"?
+		One-to-one mapping guarantee required
+	Due to limited space constraints, attacking/feeding must be dynamically decided by viable prey
+	10000 unique instances of creatures, prepopulated with 100 unique species?
+	Each tick, "killed" species disappear, starved species disappear, and remaining breed with same food-type, preferring similar
+		Weighted breeding based on deviance from one parents stats
+			Different food type counts as more deviance
+				Allows interbredding of omnivore and carnivore and herbivore, with end result randomized between parents
+			Plants cannot not be plants
+		Species almost dead have a 1% chance to not die
+		Weaker plants have a higher fixed linear breed rate
+		Creatures have a breed rate based on how many prey they personally killed prior round
+	
+	
+	
+	
+	
+	
+	
