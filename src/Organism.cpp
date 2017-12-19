@@ -9,9 +9,24 @@
 #include <stdlib.h>
 
 Organism::Organism() {
-	// TODO Auto-generated constructor stub
 	//temp!!
 	this->food = (rand() % 100) + 1;
+	this->dead = false;
+
+	this->cachedFoodConsumption = 0;
+
+	//initial parameters
+
+	this->agility = 0;
+	this->agilityVariance = 0;
+	this->toughness = 0;
+	this->toughnessVariance = 0;
+	this->intelligence = 0;
+	this->intelligenceVariance = 0;
+
+	this->kills = 0;
+
+	this->archtype = plant;
 }
 
 Organism::~Organism() {
@@ -31,6 +46,17 @@ void Organism::initialize(int toughness, int agility, int intelligence,
 	this->toughnessVariance = toughnessVariance;
 	this->agilityVariance = agilityVariance;
 	this->intelligenceVariance = intelligenceVariance;
+
+	//cap variance to not exceed initial value
+	if(this->toughnessVariance > this->toughness) {
+		this->toughnessVariance = this->toughness;
+	}
+	if(this->agilityVariance > this->agility) {
+		this->agilityVariance = this->agility;
+	}
+	if(this->intelligenceVariance > this->intelligence) {
+		this->intelligenceVariance = this->intelligence;
+	}
 }
 
 void Organism::initializeClass(ArchType archtype) {
@@ -71,7 +97,7 @@ float Organism::getValue(Stat stat, bool rollCheck) {
 
 	if(rollCheck && maxRange > 0) {
 		float roll = rand();
-		float newMaxRange = (maxRange * 2 * roll) - maxRange;
+		float newMaxRange = ((rand() % (int)(maxRange * 2)) - maxRange);
 		val = val - newMaxRange;
 
 		if(val < 0) {

@@ -15,6 +15,9 @@ PlantSimple::PlantSimple() {
 	this->foodRate = 0;
 	this->foodVariance = 0;
 
+	this->growthRate = 0;
+	this->growthVariance = 0;
+
 }
 
 PlantSimple::~PlantSimple() {
