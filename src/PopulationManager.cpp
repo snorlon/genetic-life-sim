@@ -214,7 +214,7 @@ void PopulationManager::tickTurn() {
 			//ensure there's at least two plants first..
 			//if only one, we will refuse to eat it and starve instead, lets say the plant gets "lucky"
 			if(this->plantLeastTough.size() > 1) {
-				//attempt two rolls if we fail the first time
+				//attempt multiple rolls if we fail the first time
 				for(int j=0; j<5 && !fed; j++) {
 					rolledIndex = rand() % this->plantLeastTough.size();
 					rolledTarget = this->plantLeastTough.at(rolledIndex);
@@ -288,10 +288,76 @@ void PopulationManager::tickTurn() {
 			}
 			break;
 		case omnivore:
-			//pools 5(PARAMETER?) weakest of each stat in meat, and 15(PARAMETER?) weakest plants
+			//attempts hunting weakest 5 creatures, and 3 plants
+			if(this->plantLeastTough.size() > 1) {
+				//attempt multiple rolls if we fail the first time
+				for(int j=0; j<3 && !fed; j++) {
+					rolledIndex = rand() % this->plantLeastTough.size();
+					rolledTarget = this->plantLeastTough.at(rolledIndex);
+
+					bool successfulHunting = self->stronger(rolledTarget, Toughness, true);
+
+					//target dies if pass
+					if(successfulHunting) {
+						fed = true;
+						rolledTarget->dead = true;
+						this->plantLeastTough.erase(this->plantLeastTough.begin() + rolledIndex);
+					}
+				}
+
+			}
+
 			//gets to attempt both, plant first, animal if plant fails
+			pullable = 5;
+
+			rolledTarget = getWeightedWeakest(this->creatureLeastTough, pullable, rolledIndex1);
+			rolledTarget2 = getWeightedWeakest(this->creatureLeastAgile, pullable, rolledIndex2);
+			rolledTarget3 = getWeightedWeakest(this->creatureLeastSmart, pullable, rolledIndex3);
+
+			chosenGroup = &this->creatureLeastTough;
+
+			//lives or dies on killing target
+			if(this->creatureLeastTough.size() > 0 && !fed) {
+				//picks randomly from these on whom to attack
+				rolledIndex = rand() % 3;
+
+				switch(rolledIndex) {
+				case 1:
+					rolledIndex1 = rolledIndex2;
+					rolledTarget = rolledTarget2;
+					chosenGroup = &this->creatureLeastAgile;
+					break;
+				case 2:
+					rolledIndex1 = rolledIndex3;
+					rolledTarget = rolledTarget3;
+					chosenGroup = &this->creatureLeastSmart;
+					break;
+				default:
+					break;
+				}
+
+				if(rolledTarget != NULL) {
+					bool successfulHunting = self->stronger(rolledTarget, Toughness, true);
+
+					//target dies if pass
+					if(successfulHunting) {
+						fed = true;
+						rolledTarget->dead = true;
+						chosenGroup->erase(chosenGroup->begin() + rolledIndex1);
+						//cout<<"CARNIVORE FED"<<endl;
+					}
+				}
+
+			}
+
 			//dies if both fail
 			//target dies if pass
+
+			//cull if unfed
+			if(!fed) {
+				//cout<<"Died hunting..."<<endl;
+				self->dead = true;
+			}
 			break;
 		}
 	}
