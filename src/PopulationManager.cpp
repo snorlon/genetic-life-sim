@@ -191,7 +191,14 @@ void PopulationManager::tickTurn() {
 		}
 
 		Organism* rolledTarget = NULL;
+		Organism* rolledTarget2 = NULL;
+		Organism* rolledTarget3 = NULL;
 		unsigned int rolledIndex = 0;
+		unsigned int rolledIndex1 = 0;
+		unsigned int rolledIndex2 = 0;
+		unsigned int rolledIndex3 = 0;
+
+		vector<Organism*>* chosenGroup = NULL;
 
 		//this tracks if we live or die
 		bool fed = false;
@@ -208,7 +215,7 @@ void PopulationManager::tickTurn() {
 			//if only one, we will refuse to eat it and starve instead, lets say the plant gets "lucky"
 			if(this->plantLeastTough.size() > 1) {
 				//attempt two rolls if we fail the first time
-				for(int j=0; j<2 && !fed; j++) {
+				for(int j=0; j<5 && !fed; j++) {
 					rolledIndex = rand() % this->plantLeastTough.size();
 					rolledTarget = this->plantLeastTough.at(rolledIndex);
 
@@ -234,15 +241,51 @@ void PopulationManager::tickTurn() {
 			//grabs weakest 20(PARAMETER?) of each stat, excluding self and those stronger than us in that stat
 			pullable = 20;
 
-			if(pullable > this->creatureLeastTough.size()) {
-				pullable = this->creatureLeastTough.size();
+			rolledTarget = getWeightedWeakest(this->creatureLeastTough, pullable, rolledIndex1);
+			rolledTarget2 = getWeightedWeakest(this->creatureLeastAgile, pullable, rolledIndex2);
+			rolledTarget3 = getWeightedWeakest(this->creatureLeastSmart, pullable, rolledIndex3);
+
+			chosenGroup = &this->creatureLeastTough;
+
+			//lives or dies on killing target
+			if(this->creatureLeastTough.size() > 0) {
+				//picks randomly from these on whom to attack
+				rolledIndex = rand() % 3;
+
+				switch(rolledIndex) {
+				case 1:
+					rolledIndex1 = rolledIndex2;
+					rolledTarget = rolledTarget2;
+					chosenGroup = &this->creatureLeastAgile;
+					break;
+				case 2:
+					rolledIndex1 = rolledIndex3;
+					rolledTarget = rolledTarget3;
+					chosenGroup = &this->creatureLeastSmart;
+					break;
+				default:
+					break;
+				}
+
+				if(rolledTarget != NULL) {
+					bool successfulHunting = self->stronger(rolledTarget, Toughness, true);
+
+					//target dies if pass
+					if(successfulHunting) {
+						fed = true;
+						rolledTarget->dead = true;
+						chosenGroup->erase(chosenGroup->begin() + rolledIndex1);
+						//cout<<"CARNIVORE FED"<<endl;
+					}
+				}
+
 			}
 
-
-
-			//picks randomly from these on whom to attack
-			//lives or dies on killing target
-			//target dies if pass
+			//cull if unfed
+			if(!fed) {
+				//cout<<"Died hunting..."<<endl;
+				self->dead = true;
+			}
 			break;
 		case omnivore:
 			//pools 5(PARAMETER?) weakest of each stat in meat, and 15(PARAMETER?) weakest plants
@@ -363,4 +406,14 @@ int PopulationManager::getWeightedIndex(unsigned int possibleCount) {
 
 	//by default!
 	return 0;
+}
+
+Organism* PopulationManager::getWeightedWeakest(vector<Organism*> &possibleTargets, unsigned int maxWeakestPullable, unsigned int &index) {
+	if(maxWeakestPullable > possibleTargets.size()) {
+		maxWeakestPullable = possibleTargets.size();
+	}
+
+	index = this->getWeightedIndex(maxWeakestPullable);
+
+	return possibleTargets.at(index);
 }
