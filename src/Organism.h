@@ -24,6 +24,7 @@ public:
 	void eat();
 	void reproduce();
 
+
 	void initialize(int toughness, int agility, int intelligence,
 			int toughnessVariance, int agilityVariance, int intelligenceVariance);
 	void initializeClass(ArchType archtype);
@@ -31,6 +32,8 @@ public:
 
 	float getValue(Stat stat, bool rollCheck = true);
 	bool stronger(Organism* target, Stat stat, bool rollCheck = true);
+
+	void beBorn(Organism* parent1, Organism* parent2, int mutationRate);
 
 	float getStatTotal();
 
@@ -54,6 +57,10 @@ protected:
 	int toughnessVariance;
 	int agilityVariance;
 	int intelligenceVariance;
+
+	//returns a random value between two integers without relationship
+	int randomStatInRange(int val1, int val2);
+	int mutateStat(int value, int mutationRate);
 };
 
 #endif /* ORGANISM_H_ */

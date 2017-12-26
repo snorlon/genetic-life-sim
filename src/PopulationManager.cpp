@@ -53,9 +53,42 @@ void PopulationManager::initializeGenetics(int organismsUsed, double mutationRat
 	this->originalDistribution[3] = 1-(percentPlant + percentHerbivore + percentCarnivore);
 	this->originalDistribution[4] = percentRandom;
 
+	int plantWeight = percentPlant*100;
+	int herbivoreWeight = percentHerbivore*100;
+	int carnivoreWeight = percentCarnivore*100;
+	int omnivoreWeight = 100 - plantWeight - herbivoreWeight - carnivoreWeight;
+	int randomWeight = percentRandom * 100;
+
+	int totalWeight = plantWeight+herbivoreWeight+carnivoreWeight+omnivoreWeight+randomWeight;
+
 	//generate our initial organism data
 	this->geneticPool = new Organism[this->poolSize];
 	for(unsigned int index=0; index<this->poolSize; index++) {
+		//give them a balanced chance of each archtype
+		int roll = rand() % totalWeight;
+
+		roll -= plantWeight;
+		if(roll < 0) {
+			this->geneticPool[index].initializeClass(plant);
+		} else {
+			roll -= herbivoreWeight;
+			if(roll < 0) {
+				this->geneticPool[index].initializeClass(herbivore);
+			} else {
+				roll -= carnivoreWeight;
+				if(roll < 0) {
+					this->geneticPool[index].initializeClass(carnivore);
+				} else {
+					roll -= omnivoreWeight;
+					if(roll < 0) {
+						this->geneticPool[index].initializeClass(omnivore);
+					} else {
+						this->geneticPool[index].initializeClass((ArchType)(rand() % 4));
+					}
+				}
+			}
+		}
+
 		//initialize them with a range of random values
 		this->geneticPool[index].initializeRandom(70, 30);
 	}
@@ -361,16 +394,73 @@ void PopulationManager::tickTurn() {
 			break;
 		}
 	}
-	//creature.attack(creature2);
 
-	//clear the corpses
+	//populate caches for still living plants, herbivore, omnivore, carnivore
+	vector<Organism*> livingPlants;
+	vector<Organism*> livingHerbivores;
+	vector<Organism*> livingCarnivores;
+	vector<Organism*> livingOmnivores;
+	vector<Organism*> liveCreatures;
 
+	//store vector of location for "dead" locations
+	vector<Organism*> deadCreatures;
+	deadCreatures.clear();
 
-	//populate caches for plants, herbivore+omnivore, carnivore+omnivore
-	//this->plantLeastTough.push_back(Y);
+	for(unsigned int i=0; i < poolSize; i++) {
+		ArchType creatureArchtype = this->geneticPool[i].archtype;
+		Organism* self = &this->geneticPool[i];
 
-	//grant a breed cycle between random creatures in groups, proportional to breeding pool sizes
-	//vector.push_back(creature.breed(creature));
+		if(self->dead == true) {
+			deadCreatures.push_back(self);
+		} else {
+			liveCreatures.push_back(self);
+			switch(creatureArchtype) {
+			case plant:
+				livingPlants.push_back(self);
+				break;
+			case herbivore:
+				livingHerbivores.push_back(self);
+				break;
+			case carnivore:
+				livingCarnivores.push_back(self);
+				break;
+			case omnivore:
+				livingOmnivores.push_back(self);
+				break;
+			}
+		}
+	}
+
+	//breed based on distribution with random from each pool, plus minor mutation shifts
+	for(unsigned int i=0; i<deadCreatures.size(); i++) {
+		Organism* self = deadCreatures.at(i);
+
+		//roll a 100% random creature
+		Organism* parent1 = liveCreatures.at(rand() % liveCreatures.size());
+
+		//roll a creature in a compatible group to breed with first creature
+		Organism* parent2 = NULL;
+		switch(parent1->archtype) {
+		case plant:
+			parent2 = livingPlants.at(rand() % livingPlants.size());
+			break;
+		case herbivore:
+			parent2 = livingHerbivores.at(rand() % livingHerbivores.size());
+			break;
+		case carnivore:
+			parent2 = livingCarnivores.at(rand() % livingCarnivores.size());
+			break;
+		case omnivore:
+			parent2 = livingOmnivores.at(rand() % livingOmnivores.size());
+			break;
+		}
+
+		if(parent2 != NULL) {
+			//update corpses' data to be a mix of parents with mutation
+			self->beBorn(parent1, parent2, 3);
+		}
+
+	}
 }
 
 

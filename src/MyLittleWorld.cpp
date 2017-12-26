@@ -18,7 +18,7 @@ using namespace std;
 int main() {
 	PopulationManager popManager;
 
-	popManager.initializeGenetics(2000, 0.03, 0.4, 0.1, 0.3);
+	popManager.initializeGenetics(5000, 0.03, 0.6, 0.1, 0.27);
 	popManager.initializeEvolution(5);
 	popManager.run();
 
