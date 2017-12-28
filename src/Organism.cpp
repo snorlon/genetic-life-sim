@@ -13,7 +13,7 @@ Organism::Organism() {
 	this->food = (rand() % 100) + 1;
 	this->dead = false;
 
-	this->cachedFoodConsumption = 0;
+	this->foodConsumption = 0;
 
 	//initial parameters
 
@@ -35,6 +35,27 @@ Organism::~Organism() {
 
 void Organism::tickTurn() {
 
+}
+
+void Organism::eat(Organism* prey) {
+	//consume prey's food if not a plant
+	if(archtype != plant) {
+		int divisor = 2;
+		int currFood = food;
+
+		const int decayRate = 500;
+
+		//for each 'decayRate' food we have, we divide what we consume more
+		while(currFood > decayRate) {
+			divisor *= 2;
+			currFood -= decayRate;
+		}
+
+		this->food += prey->food / divisor;
+	} else {
+		//otherwise, generate food based on our current size
+
+	}
 }
 
 void Organism::initialize(int toughness, int agility, int intelligence,
@@ -165,4 +186,16 @@ int Organism::mutateStat(int value, int mutationRate) {
 
 float Organism::getStatTotal() {
 	return this->getValue(Toughness, false) + this->getValue(Agility, false) + this->getValue(Intelligence, false);
+}
+
+int Organism::getToughness() {
+	return toughness;
+}
+
+int Organism::getAgility() {
+	return agility;
+}
+
+int Organism::getIntelligence() {
+	return intelligence;
 }

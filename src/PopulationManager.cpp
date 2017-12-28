@@ -134,7 +134,7 @@ void PopulationManager::run() {
 
 		this->tick = this->tick + 1;
 
-		if(this->tick % 1 == 0 || this->tick == 1) {
+		if(this->tick % 100 == 0 || this->tick == 1) {
 			cout<<"Tick " << this->tick <<": |"<<this->countPlants()<<"|"<<this->countHerbivores()<<"|"
 					<<this->countCarnivores()<<"|"<<this->countOmnivores()<<"|" << endl;
 		}
@@ -213,6 +213,12 @@ void PopulationManager::tickTurn() {
 	//sort turn order by stat total
 	sort(this->creatureTurnOrder.begin(), this->creatureTurnOrder.end(), sortTurnOrder);
 
+	//cache size of each creature group
+	int plantCount = countPlants();
+	int herbivoreCount = countHerbivores();
+	int carnivoreCount = countCarnivores();
+	int omnivoreCount = countOmnivores();
+
 	//grant each creature an attack cycle
 	for(unsigned int i=0; i < poolSize; i++) {
 		ArchType creatureArchtype = this->geneticPool[i].archtype;
@@ -231,6 +237,8 @@ void PopulationManager::tickTurn() {
 		unsigned int rolledIndex2 = 0;
 		unsigned int rolledIndex3 = 0;
 
+		int chanceToDie = 1;
+
 		vector<Organism*>* chosenGroup = NULL;
 
 		//this tracks if we live or die
@@ -241,6 +249,14 @@ void PopulationManager::tickTurn() {
 		case plant:
 			//plants can't attack :) they live by outreproducing mammals
 			//to survive is to not be killed for them, we'll assume for now
+
+			//they do have a chance to die though, a flat 3% + toughness/400
+			chanceToDie = 3+(self->getToughness() / 400);
+
+			if(rand() % 100 < chanceToDie) {
+				self->dead = true;
+			}
+
 			break;
 		case herbivore:
 			//picks a random plant out of all plants, either lives or dies on this choice
@@ -301,10 +317,16 @@ void PopulationManager::tickTurn() {
 				}
 
 				if(rolledTarget != NULL) {
-					bool successfulHunting = self->stronger(rolledTarget, Toughness, true);
+					bool successfulHunting1 = self->stronger(rolledTarget, Toughness, true);
+					bool successfulHunting2 = self->stronger(rolledTarget, Agility, true);
+					bool successfulHunting3 = self->stronger(rolledTarget, Intelligence, true);
+
+					bool pairA = successfulHunting1 && successfulHunting2;
+					bool pairB = successfulHunting1 && successfulHunting3;
+					bool pairC = successfulHunting3 && successfulHunting2;
 
 					//target dies if pass
-					if(successfulHunting) {
+					if(pairA || pairB || pairC) {
 						fed = true;
 						rolledTarget->dead = true;
 						chosenGroup->erase(chosenGroup->begin() + rolledIndex1);
@@ -317,6 +339,14 @@ void PopulationManager::tickTurn() {
 			//cull if unfed
 			if(!fed) {
 				//cout<<"Died hunting..."<<endl;
+				self->dead = true;
+			}
+
+
+			//they do have a chance to die though, a flat 3% + toughness/400
+			chanceToDie = 5+(self->getToughness() / 500);
+
+			if(rand() % 100 < chanceToDie) {
 				self->dead = true;
 			}
 			break;
@@ -370,10 +400,16 @@ void PopulationManager::tickTurn() {
 				}
 
 				if(rolledTarget != NULL) {
-					bool successfulHunting = self->stronger(rolledTarget, Toughness, true);
+					bool successfulHunting1 = self->stronger(rolledTarget, Toughness, true);
+					bool successfulHunting2 = self->stronger(rolledTarget, Agility, true);
+					bool successfulHunting3 = self->stronger(rolledTarget, Intelligence, true);
+
+					bool pairA = successfulHunting1 && successfulHunting2;
+					bool pairB = successfulHunting1 && successfulHunting3;
+					bool pairC = successfulHunting3 && successfulHunting2;
 
 					//target dies if pass
-					if(successfulHunting) {
+					if(pairA || pairB || pairC) {
 						fed = true;
 						rolledTarget->dead = true;
 						chosenGroup->erase(chosenGroup->begin() + rolledIndex1);
@@ -392,6 +428,30 @@ void PopulationManager::tickTurn() {
 				self->dead = true;
 			}
 			break;
+		}
+
+		//add a bonus death penalty depending on population size compared to total population
+		int popSize = plantCount;
+		switch(self->archtype) {
+		case herbivore:
+			popSize = herbivoreCount;
+			break;
+		case carnivore:
+			popSize = carnivoreCount;
+			break;
+		case omnivore:
+			popSize = omnivoreCount;
+			break;
+		default:
+			break;
+		}
+
+		//factors in for "hidden" factors that large populations create and helps mitigate any given population exploding
+			//things like algae blooms as a result of too much excrement in a river, for example
+		//(#/total #) * 0.4 chance of instantdeath
+		if(popSize * 0.1 > rand() % poolSize) {
+			//died to overpopulation results
+			self->dead = true;
 		}
 	}
 
@@ -431,33 +491,39 @@ void PopulationManager::tickTurn() {
 		}
 	}
 
+	float percentNewRandom = 0.30;
 	//breed based on distribution with random from each pool, plus minor mutation shifts
 	for(unsigned int i=0; i<deadCreatures.size(); i++) {
 		Organism* self = deadCreatures.at(i);
 
-		//roll a 100% random creature
-		Organism* parent1 = liveCreatures.at(rand() % liveCreatures.size());
+		if(i < deadCreatures.size() * percentNewRandom) {
+			self->initializeClass((ArchType)(rand() % 4));
+			self->initializeRandom(70, 30);
+		} else {
+			//roll a 100% random creature
+			Organism* parent1 = liveCreatures.at(rand() % liveCreatures.size());
 
-		//roll a creature in a compatible group to breed with first creature
-		Organism* parent2 = NULL;
-		switch(parent1->archtype) {
-		case plant:
-			parent2 = livingPlants.at(rand() % livingPlants.size());
-			break;
-		case herbivore:
-			parent2 = livingHerbivores.at(rand() % livingHerbivores.size());
-			break;
-		case carnivore:
-			parent2 = livingCarnivores.at(rand() % livingCarnivores.size());
-			break;
-		case omnivore:
-			parent2 = livingOmnivores.at(rand() % livingOmnivores.size());
-			break;
-		}
+			//roll a creature in a compatible group to breed with first creature
+			Organism* parent2 = NULL;
+			switch(parent1->archtype) {
+			case plant:
+				parent2 = livingPlants.at(rand() % livingPlants.size());
+				break;
+			case herbivore:
+				parent2 = livingHerbivores.at(rand() % livingHerbivores.size());
+				break;
+			case carnivore:
+				parent2 = livingCarnivores.at(rand() % livingCarnivores.size());
+				break;
+			case omnivore:
+				parent2 = livingOmnivores.at(rand() % livingOmnivores.size());
+				break;
+			}
 
-		if(parent2 != NULL) {
-			//update corpses' data to be a mix of parents with mutation
-			self->beBorn(parent1, parent2, 3);
+			if(parent2 != NULL) {
+				//update corpses' data to be a mix of parents with mutation
+				self->beBorn(parent1, parent2, 3);
+			}
 		}
 
 	}

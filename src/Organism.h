@@ -21,7 +21,7 @@ public:
 	void tickTurn();
 
 	bool attack();
-	void eat();
+	void eat(Organism* prey = NULL);
 	void reproduce();
 
 
@@ -37,11 +37,24 @@ public:
 
 	float getStatTotal();
 
+	int getToughness();
+	int getAgility();
+	int getIntelligence();
+
 	std::string name;
 	ArchType archtype;
 
 
-	float cachedFoodConsumption;
+	//food is gained on kills, 50% of targets food is gained
+	//an animal will not consume more than 25% more than they need to survive and will "eject" it at the food check cycle
+	//a plant will not die if they have enough food left after the hunting cycle, but an animal dies after preyed
+	//lets say plants gain more with lower stats, but less as they gain more and more as they don't consume
+		//every 1000 food gains, their rate of gain decreases
+			//this will lead to small plants peaking at food amount quickly whilst dieing quickly, like a weed
+			//whereas bigger, tougher plants have less to spare and as such aren't targetted as much
+			//big plants will become the basis for plant survival whilst smaller ones will breed more(TODO)
+	//food consumption should be based on the assumption that target eats 2 prey at their stat size
+	float foodConsumption;
 	float food;
 
 	float kills;
