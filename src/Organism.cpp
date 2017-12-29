@@ -260,7 +260,7 @@ int Organism::getIntelligence() {
 void Organism::recalculateFood() {
 
 	//base food consumption on stats
-	this->foodConsumption = (this->agility + this->intelligence + this->toughness)*0.12;
+	this->foodConsumption = (this->agility + this->intelligence + this->toughness)*0.05;
 
 
 	//base foodcap on consumption

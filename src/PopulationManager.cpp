@@ -134,9 +134,9 @@ void PopulationManager::run() {
 
 		this->tick = this->tick + 1;
 
-		if(this->tick % 100 == 0 || this->tick == 1) {
-			cout<<"Tick " << this->tick <<": |"<<this->countPlants()<<"|"<<this->countHerbivores()<<"|"
-					<<this->countCarnivores()<<"|"<<this->countOmnivores()<<"|" << endl;
+		if(this->tick % tickInfoFrequency == 0 || this->tick == 1) {
+			cout<<"Tick " << this->tick <<": [ "<<this->countPlants()<<"p "<<this->countHerbivores()<<"h "
+					<<this->countCarnivores()<<"c "<<this->countOmnivores()<<"o ] Alive at end of tick" << endl;
 		}
 	}
 	cout<<"Simulation has reached tick limit."<<endl;
@@ -459,12 +459,24 @@ void PopulationManager::tickTurn() {
 		}
 	}
 
-	float percentNewRandom = 0.30;
+	//at intervals, report how many of each type survived
+	if(tick % tickInfoFrequency == 0) {
+		int survivorCount[] = {0,0,0,0};
+
+		for(unsigned int i=0; i<liveCreatures.size(); i++) {
+			survivorCount[liveCreatures.at(i)->archtype]++;
+		}
+
+		cout<<"Survivors: { "<<survivorCount[plant]<<"p "<<survivorCount[herbivore]<<"h "
+				<<survivorCount[carnivore]<<"c "<<survivorCount[omnivore]<<"o }"<<endl;
+	}
+
+	float percentNewRandom = 0.05;
 
 	//safety check for no living things, we had a genocide on our hands!
 	if(liveCreatures.size() <= 0) {
-		if(tick % 100 == 0) {
-			cout<<"Everyone died!"<<endl;
+		if(tick % tickInfoFrequency == 0) {
+			//cout<<"Everyone died!"<<endl;
 		}
 		percentNewRandom = 1;
 	}
