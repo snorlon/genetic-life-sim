@@ -14,6 +14,32 @@
 enum ArchType { plant, herbivore, omnivore, carnivore };
 enum Stat { Toughness, Agility, Intelligence };
 
+//plant variables
+//per stat point
+const float baseProductionRate = 2.0;
+//every stat point below this will grant us more food production
+const int productionRateComparisonUpperbound = 100;
+//rate that food slows, every X of this will half production gains
+const int plantFoodGainDecay = 1000;
+
+//herbivore variables
+//amount of food gained % from eating
+const float herbivoreConsumptionGain = 0.5;
+//rate that food slows, every X of this will half production gains
+const int herbivoreFoodGainDecay = 600;
+
+//carnivore variables
+//amount of food gained % from eating
+const float carnivoreConsumptionGain = 0.5;
+//rate that food slows, every X of this will half production gains
+const int carnivoreFoodGainDecay = 500;
+
+//omnivore variables
+//amount of food gained % from eating
+const float omnivoreConsumptionGain = 0.5;
+//rate that food slows, every X of this will half production gains
+const int omnivoreFoodGainDecay = 600;
+
 class Organism {
 public:
 	Organism();
@@ -21,7 +47,10 @@ public:
 	void tickTurn();
 
 	bool attack();
+	//takes in a prey if a nonplant, will consume prey if they are passed and take in their food
 	void eat(Organism* prey = NULL);
+	//will kill a creature if they have insufficient food left to survive
+	void consumeFood();
 	void reproduce();
 
 
@@ -41,6 +70,8 @@ public:
 	int getAgility();
 	int getIntelligence();
 
+	void recalculateFood();
+
 	std::string name;
 	ArchType archtype;
 
@@ -56,6 +87,7 @@ public:
 	//food consumption should be based on the assumption that target eats 2 prey at their stat size
 	float foodConsumption;
 	float food;
+	float foodCap;
 
 	float kills;
 

@@ -18,8 +18,8 @@ using namespace std;
 int main() {
 	PopulationManager popManager;
 
-	popManager.initializeGenetics(50000, 0.03, 0.6, 0.1, 0.27);
-	popManager.initializeEvolution(50000);
+	popManager.initializeGenetics(50000, 0.1, 0.2, 0.1, 0.7, 0);
+	popManager.initializeEvolution(100000);
 	popManager.run();
 
 	//cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!

@@ -14,6 +14,7 @@ Organism::Organism() {
 	this->dead = false;
 
 	this->foodConsumption = 0;
+	this->foodCap = 5;
 
 	//initial parameters
 
@@ -40,21 +41,72 @@ void Organism::tickTurn() {
 void Organism::eat(Organism* prey) {
 	//consume prey's food if not a plant
 	if(archtype != plant) {
-		int divisor = 2;
 		int currFood = food;
+		//determine how much we're taking from target, limited by our stomach size
+		int foodConsumed = prey->food;
+		if(foodConsumed > foodCap) {
+			foodConsumed = foodCap;
+		}
 
-		const int decayRate = 500;
+		//remove the food consumed from the creature so that it can try to not die ;)
+		prey->food -= foodConsumed;
+
+		//default food loss multiplier
+		float divisor = 0.1;
+		//default decay rate
+		int decayRate = 500;
+
+		switch(archtype) {
+		case herbivore:
+			divisor = herbivoreConsumptionGain;
+			decayRate = herbivoreFoodGainDecay;
+			break;
+		case carnivore:
+			divisor = carnivoreConsumptionGain;
+			decayRate = carnivoreFoodGainDecay;
+			break;
+		case omnivore:
+			divisor = omnivoreConsumptionGain;
+			decayRate = omnivoreFoodGainDecay;
+			break;
+		default:
+			break;
+		}
 
 		//for each 'decayRate' food we have, we divide what we consume more
 		while(currFood > decayRate) {
-			divisor *= 2;
+			divisor /= 2;
 			currFood -= decayRate;
 		}
 
-		this->food += prey->food / divisor;
+		this->food += prey->food * divisor;
 	} else {
 		//otherwise, generate food based on our current size
+		float statDifference = productionRateComparisonUpperbound - getStatTotal();
 
+		//prevent negative values
+		if(statDifference < 0) {
+			statDifference = 0;
+		}
+
+		int foodGain = statDifference * baseProductionRate;
+		int currFood = food;
+		float divisor = 1.0;
+
+		//apply decay on all gained food
+		while(currFood> plantFoodGainDecay) {
+			currFood -= plantFoodGainDecay;
+			divisor /= 2;
+		}
+
+		this->food += foodGain * divisor;
+	}
+}
+
+void Organism::consumeFood() {
+	food -= foodConsumption;
+	if(food < 0) {
+		dead = true;
 	}
 }
 
@@ -78,6 +130,8 @@ void Organism::initialize(int toughness, int agility, int intelligence,
 	if(this->intelligenceVariance > this->intelligence) {
 		this->intelligenceVariance = this->intelligence;
 	}
+
+	recalculateFood();
 }
 
 void Organism::initializeClass(ArchType archtype) {
@@ -89,6 +143,9 @@ void Organism::initializeClass(ArchType archtype) {
 		this->agilityVariance = 0;
 		this->intelligenceVariance = 0;
 	}
+
+
+	recalculateFood();
 }
 
 void Organism::initializeRandom(int maxStatRange, int maxStatVarianceRange) {
@@ -198,4 +255,14 @@ int Organism::getAgility() {
 
 int Organism::getIntelligence() {
 	return intelligence;
+}
+
+void Organism::recalculateFood() {
+
+	//base food consumption on stats
+	this->foodConsumption = (this->agility + this->intelligence + this->toughness)*0.12;
+
+
+	//base foodcap on consumption
+	this->foodCap = this->foodConsumption*2.6;
 }
