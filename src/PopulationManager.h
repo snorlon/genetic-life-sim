@@ -17,6 +17,8 @@
 #include <algorithm>
 #include <vector>
 
+const int tickInfoFrequency = 10;
+
 class PopulationManager {
 public:
 	PopulationManager(int seed = time(NULL));

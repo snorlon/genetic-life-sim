@@ -134,9 +134,9 @@ void PopulationManager::run() {
 
 		this->tick = this->tick + 1;
 
-		if(this->tick % 100 == 0 || this->tick == 1) {
-			cout<<"Tick " << this->tick <<": |"<<this->countPlants()<<"|"<<this->countHerbivores()<<"|"
-					<<this->countCarnivores()<<"|"<<this->countOmnivores()<<"|" << endl;
+		if(this->tick % tickInfoFrequency == 0 || this->tick == 1) {
+			cout<<"Tick " << this->tick <<": [ "<<this->countPlants()<<"p "<<this->countHerbivores()<<"h "
+					<<this->countCarnivores()<<"c "<<this->countOmnivores()<<"o ] Alive at end of tick" << endl;
 		}
 	}
 	cout<<"Simulation has reached tick limit."<<endl;
@@ -237,8 +237,6 @@ void PopulationManager::tickTurn() {
 		unsigned int rolledIndex2 = 0;
 		unsigned int rolledIndex3 = 0;
 
-		int chanceToDie = 1;
-
 		vector<Organism*>* chosenGroup = NULL;
 
 		//this tracks if we live or die
@@ -249,22 +247,15 @@ void PopulationManager::tickTurn() {
 		case plant:
 			//plants can't attack :) they live by outreproducing mammals
 			//to survive is to not be killed for them, we'll assume for now
-
-			//they do have a chance to die though, a flat 3% + toughness/400
-			chanceToDie = 3+(self->getToughness() / 400);
-
-			if(rand() % 100 < chanceToDie) {
-				self->dead = true;
-			}
+			self->eat();
 
 			break;
 		case herbivore:
-			//picks a random plant out of all plants, either lives or dies on this choice
+			//picks a random plant out of all plants, takes food from plant if possible
 			//ensure there's at least two plants first..
-			//if only one, we will refuse to eat it and starve instead, lets say the plant gets "lucky"
-			if(this->plantLeastTough.size() > 1) {
-				//attempt multiple rolls if we fail the first time
-				for(int j=0; j<5 && !fed; j++) {
+			if(this->plantLeastTough.size() > 0) {
+				//attempt multiple hunts if we fail the first time
+				for(int j=0; j<5 && !fed && this->plantLeastTough.size() > 0; j++) {
 					rolledIndex = rand() % this->plantLeastTough.size();
 					rolledTarget = this->plantLeastTough.at(rolledIndex);
 
@@ -272,18 +263,11 @@ void PopulationManager::tickTurn() {
 
 					//target dies if pass
 					if(successfulHunting) {
-						fed = true;
-						rolledTarget->dead = true;
-						this->plantLeastTough.erase(this->plantLeastTough.begin() + rolledIndex);
+						self->eat(rolledTarget);
+						fed = self->food >= self->foodCap;
 					}
 				}
 
-			}
-
-			//cull if unfed
-			if(!fed) {
-				//cout<<"Died hunting..."<<endl;
-				self->dead = true;
 			}
 			break;
 		case carnivore:
@@ -327,27 +311,11 @@ void PopulationManager::tickTurn() {
 
 					//target dies if pass
 					if(pairA || pairB || pairC) {
-						fed = true;
-						rolledTarget->dead = true;
-						chosenGroup->erase(chosenGroup->begin() + rolledIndex1);
-						//cout<<"CARNIVORE FED"<<endl;
+						self->eat(rolledTarget);
+						fed = self->food >= self->foodCap;
 					}
 				}
 
-			}
-
-			//cull if unfed
-			if(!fed) {
-				//cout<<"Died hunting..."<<endl;
-				self->dead = true;
-			}
-
-
-			//they do have a chance to die though, a flat 3% + toughness/400
-			chanceToDie = 5+(self->getToughness() / 500);
-
-			if(rand() % 100 < chanceToDie) {
-				self->dead = true;
 			}
 			break;
 		case omnivore:
@@ -364,7 +332,6 @@ void PopulationManager::tickTurn() {
 					if(successfulHunting) {
 						fed = true;
 						rolledTarget->dead = true;
-						this->plantLeastTough.erase(this->plantLeastTough.begin() + rolledIndex);
 					}
 				}
 
@@ -410,25 +377,26 @@ void PopulationManager::tickTurn() {
 
 					//target dies if pass
 					if(pairA || pairB || pairC) {
-						fed = true;
-						rolledTarget->dead = true;
-						chosenGroup->erase(chosenGroup->begin() + rolledIndex1);
-						//cout<<"CARNIVORE FED"<<endl;
+						self->eat(rolledTarget);
+						fed = self->food >= self->foodCap;
 					}
 				}
 
 			}
-
-			//dies if both fail
-			//target dies if pass
-
-			//cull if unfed
-			if(!fed) {
-				//cout<<"Died hunting..."<<endl;
-				self->dead = true;
-			}
 			break;
 		}
+
+
+		//kill any creature that can't pay the food tax that is life
+		for(unsigned int i=0; i < poolSize; i++) {
+			if(this->geneticPool[i].dead) {
+				continue;
+			}
+
+			this->geneticPool[i].consumeFood();
+		}
+
+
 
 		//add a bonus death penalty depending on population size compared to total population
 		int popSize = plantCount;
@@ -491,13 +459,82 @@ void PopulationManager::tickTurn() {
 		}
 	}
 
-	float percentNewRandom = 0.30;
+	//at intervals, report how many of each type survived
+	if(tick % tickInfoFrequency == 0) {
+		int survivorCount[] = {0,0,0,0};
+
+		for(unsigned int i=0; i<liveCreatures.size(); i++) {
+			survivorCount[liveCreatures.at(i)->archtype]++;
+		}
+
+		cout<<"Survivors: { "<<survivorCount[plant]<<"p "<<survivorCount[herbivore]<<"h "
+				<<survivorCount[carnivore]<<"c "<<survivorCount[omnivore]<<"o }"<<endl;
+	}
+
+	float percentNewRandom = 0.05;
+
+	//safety check for no living things, we had a genocide on our hands!
+	if(liveCreatures.size() <= 0) {
+		if(tick % tickInfoFrequency == 0) {
+			//cout<<"Everyone died!"<<endl;
+		}
+		percentNewRandom = 1;
+	}
+
 	//breed based on distribution with random from each pool, plus minor mutation shifts
+
+	//minimum of 1% chance for an archetype to surface randomly to prevent full extinction of them
+		//handled by scaling 100% to 96%
+	const int baseRate = 1;
+	int scaledSize = 100 - baseRate*4;
+
+	int plantRate = baseRate;
+	int herbivoreRate = baseRate;
+	int carnivoreRate = baseRate;
+	int omnivoreRate = baseRate;
+
+	plantCount = livingPlants.size();
+	herbivoreCount = livingHerbivores.size();
+	carnivoreCount = livingCarnivores.size();
+	omnivoreCount = livingOmnivores.size();
+	int total = plantCount + herbivoreCount + carnivoreCount + omnivoreCount;
+
+	plantRate += (plantCount / total) * scaledSize;
+	herbivoreRate += (herbivoreCount / total) * scaledSize;
+	carnivoreRate += (carnivoreCount / total) * scaledSize;
+	omnivoreRate += (omnivoreCount / total) * scaledSize;
+
+	total = plantRate + herbivoreRate + carnivoreRate + omnivoreRate;
+
 	for(unsigned int i=0; i<deadCreatures.size(); i++) {
 		Organism* self = deadCreatures.at(i);
 
+		//have a portion be random new species
 		if(i < deadCreatures.size() * percentNewRandom) {
-			self->initializeClass((ArchType)(rand() % 4));
+			ArchType archtype = plant;
+			int roll = rand() % total;
+			if(roll <= plantRate) {
+				archtype = plant;
+			} else {
+				roll -= plantRate;
+				if(roll <= herbivoreRate) {
+					archtype = herbivore;
+				} else {
+					roll -= herbivoreRate;
+					if(roll <= carnivoreRate) {
+						archtype = carnivore;
+					} else {
+						roll -= carnivoreRate;
+						if(roll <= omnivoreRate) {
+							archtype = omnivore;
+						} else {
+							cout<<"CRITICAL ERROR in random breeding cycle!"<<endl;
+						}
+					}
+				}
+			}
+
+			self->initializeClass(archtype);
 			self->initializeRandom(70, 30);
 		} else {
 			//roll a 100% random creature
