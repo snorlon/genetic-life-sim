@@ -423,6 +423,7 @@ void PopulationManager::tickTurn() {
 		}
 	}
 
+
 	//populate caches for still living plants, herbivore, omnivore, carnivore
 	vector<Organism*> livingPlants;
 	vector<Organism*> livingHerbivores;
@@ -471,7 +472,7 @@ void PopulationManager::tickTurn() {
 				<<survivorCount[carnivore]<<"c "<<survivorCount[omnivore]<<"o }"<<endl;
 	}
 
-	float percentNewRandom = 0.05;
+	float percentNewRandom = 0.1;
 
 	//safety check for no living things, we had a genocide on our hands!
 	if(liveCreatures.size() <= 0) {
@@ -498,6 +499,11 @@ void PopulationManager::tickTurn() {
 	carnivoreCount = livingCarnivores.size();
 	omnivoreCount = livingOmnivores.size();
 	int total = plantCount + herbivoreCount + carnivoreCount + omnivoreCount;
+
+	//in case we have no survivors
+	if(total <= 0) {
+		total = 1;
+	}
 
 	plantRate += (plantCount / total) * scaledSize;
 	herbivoreRate += (herbivoreCount / total) * scaledSize;

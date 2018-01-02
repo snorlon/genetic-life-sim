@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <vector>
 
-const int tickInfoFrequency = 10;
+const int tickInfoFrequency = 100;
 
 class PopulationManager {
 public:
