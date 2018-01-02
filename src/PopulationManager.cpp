@@ -482,11 +482,59 @@ void PopulationManager::tickTurn() {
 	}
 
 	//breed based on distribution with random from each pool, plus minor mutation shifts
+
+	//minimum of 1% chance for an archetype to surface randomly to prevent full extinction of them
+		//handled by scaling 100% to 96%
+	const int baseRate = 1;
+	int scaledSize = 100 - baseRate*4;
+
+	int plantRate = baseRate;
+	int herbivoreRate = baseRate;
+	int carnivoreRate = baseRate;
+	int omnivoreRate = baseRate;
+
+	plantCount = livingPlants.size();
+	herbivoreCount = livingHerbivores.size();
+	carnivoreCount = livingCarnivores.size();
+	omnivoreCount = livingOmnivores.size();
+	int total = plantCount + herbivoreCount + carnivoreCount + omnivoreCount;
+
+	plantRate += (plantCount / total) * scaledSize;
+	herbivoreRate += (herbivoreCount / total) * scaledSize;
+	carnivoreRate += (carnivoreCount / total) * scaledSize;
+	omnivoreRate += (omnivoreCount / total) * scaledSize;
+
+	total = plantRate + herbivoreRate + carnivoreRate + omnivoreRate;
+
 	for(unsigned int i=0; i<deadCreatures.size(); i++) {
 		Organism* self = deadCreatures.at(i);
 
+		//have a portion be random new species
 		if(i < deadCreatures.size() * percentNewRandom) {
-			self->initializeClass((ArchType)(rand() % 4));
+			ArchType archtype = plant;
+			int roll = rand() % total;
+			if(roll <= plantRate) {
+				archtype = plant;
+			} else {
+				roll -= plantRate;
+				if(roll <= herbivoreRate) {
+					archtype = herbivore;
+				} else {
+					roll -= herbivoreRate;
+					if(roll <= carnivoreRate) {
+						archtype = carnivore;
+					} else {
+						roll -= carnivoreRate;
+						if(roll <= omnivoreRate) {
+							archtype = omnivore;
+						} else {
+							cout<<"CRITICAL ERROR in random breeding cycle!"<<endl;
+						}
+					}
+				}
+			}
+
+			self->initializeClass(archtype);
 			self->initializeRandom(70, 30);
 		} else {
 			//roll a 100% random creature
