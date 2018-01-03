@@ -515,6 +515,11 @@ void PopulationManager::tickTurn() {
 	for(unsigned int i=0; i<deadCreatures.size(); i++) {
 		Organism* self = deadCreatures.at(i);
 
+		//chance to skip over corpse, to allow population totals to fluctuate a bit
+		if(rand() % 100 < chanceToFailToBreed) {
+			continue;
+		}
+
 		//have a portion be random new species
 		if(i < deadCreatures.size() * percentNewRandom) {
 			ArchType archtype = plant;

@@ -189,8 +189,27 @@ bool Organism::stronger(Organism* target, Stat stat, bool rollCheck) {
 		return true;
 	}
 
+	float multiplier = 1.0;
+	//plants take penalty vs every organism, herbivores take penalty vs carnivores and omnivores
+	//carnivores take advantage defensively vs other carnivores and omnivores
+	//this will create a stronger advantage for archtypes of creatures
+	//but only apply during rollCheck, as this is used for actual damage calculations
+	if(rollCheck) {
+		if(target->archtype == plant) {
+			multiplier = 0.8;
+		} else if(target->archtype == herbivore) {
+			if(archtype == carnivore) {
+				multiplier = 0.8;
+			} else {
+				multiplier = 0.9;
+			}
+		} else if(target->archtype == carnivore) {
+			multiplier = 1.1;
+		}
+	}
+
 	float ourStat = this->getValue(stat, rollCheck);
-	float theirStat = target->getValue(stat, rollCheck);
+	float theirStat = target->getValue(stat, rollCheck) * multiplier;
 
 	return (ourStat > theirStat);
 }
@@ -260,9 +279,10 @@ int Organism::getIntelligence() {
 void Organism::recalculateFood() {
 
 	//base food consumption on stats
-	this->foodConsumption = (this->agility + this->intelligence + this->toughness)*0.05;
+	this->foodConsumption = (this->agility + this->intelligence + this->toughness)*0.03 +
+			(this->agilityVariance + this->intelligenceVariance + this->toughnessVariance)*0.05;
 
 
 	//base foodcap on consumption
-	this->foodCap = this->foodConsumption*2.6;
+	this->foodCap = this->foodConsumption*2.1;
 }

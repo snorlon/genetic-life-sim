@@ -18,6 +18,8 @@
 #include <vector>
 
 const int tickInfoFrequency = 100;
+const int chanceToFailToBreed = 50;//%, if failure, corpse from prior cycle remains
+	//this adds an element of corpses to the food chain and population density
 
 class PopulationManager {
 public:
