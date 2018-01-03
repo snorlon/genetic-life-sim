@@ -16,6 +16,8 @@
 
 #include <algorithm>
 #include <vector>
+#include "support/Config.h"
+#include "support/Parameters.h"
 
 const int tickInfoFrequency = 100;
 const int chanceToFailToBreed = 50;//%, if failure, corpse from prior cycle remains
@@ -23,7 +25,7 @@ const int chanceToFailToBreed = 50;//%, if failure, corpse from prior cycle rema
 
 class PopulationManager {
 public:
-	PopulationManager(int seed = time(NULL));
+	PopulationManager(Config* simConfig, Parameters* simParams, int seed = time(NULL));
 	virtual ~PopulationManager();
 
 	//Mutation rate is 0.00-1.00 percent variation added per iteration per gene
@@ -64,6 +66,9 @@ public:
 
 private:
 	Organism* geneticPool;
+
+	Config* simConfig;
+	Parameters* simParams;
 
 	unsigned int weightedTotal [MAX_WEIGHTS];
 

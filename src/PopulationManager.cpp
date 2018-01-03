@@ -10,8 +10,11 @@ using namespace std;
 
 #include "PopulationManager.h"
 
-PopulationManager::PopulationManager(int seed) {
+PopulationManager::PopulationManager(Config* simConfig, Parameters* simParams, int seed) {
 	srand (seed);
+
+	this->simConfig = simConfig;
+	this->simParams = simParams;
 
 	this->percentRandom = 0;
 	this->mutationRate = 0.1;

@@ -9,17 +9,19 @@
 #define SUPPORT_PARAMETERS_H_
 
 #include "../Organism.h"
+#include <vector>
+
+using namespace std;
 
 class Parameters {
 public:
 	Parameters();
 	virtual ~Parameters();
 
-	float calculateFoodConsumption(Organism* self);
-	float calculateFoodCapacity(Organism* self);
+	float getFoodPenalty();
+	float getVarianceFoodPenalty();
 
-private:
-	int spawnRates[];
+	vector<float> spawnRates;
 	float initialRandomPercent;
 	float randomPerBreedCycle;
 

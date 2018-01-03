@@ -16,3 +16,10 @@ Parameters::~Parameters() {
 	// TODO Auto-generated destructor stub
 }
 
+float Parameters::getFoodPenalty() {
+	return statFoodPenalty;
+}
+
+float Parameters::getVarianceFoodPenalty() {
+	return statVarianceFoodPenalty;
+}
