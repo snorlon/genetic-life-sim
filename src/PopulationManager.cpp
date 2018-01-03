@@ -17,9 +17,7 @@ PopulationManager::PopulationManager(Config* simConfig, Parameters* simParams, i
 	this->simParams = simParams;
 
 	this->percentRandom = 0;
-	this->mutationRate = 0.1;
 	this->poolSize = 5;
-	this->weightedBreeding = false;
 
 	this->geneticPool = NULL;
 	this->tick = 0;
@@ -32,34 +30,21 @@ PopulationManager::~PopulationManager() {
 	// TODO Auto-generated destructor stub
 }
 
-void PopulationManager::initializeGenetics(int organismsUsed, double mutationRate,
-			float percentPlant, float percentHerbivore, float percentCarnivore,
-			float percentRandom, bool weightedBreeding) {
-
-	if(percentPlant + percentHerbivore + percentCarnivore > 1.00) {
-		cout<<"Percents exceed 100% for plant/herbivore/carnivore!"<<endl;
-		return;
-	}
-	if(percentRandom > 1.00) {
-		cout<<"Random percent cannot exceed 100%!"<<endl;
-		return;
-	}
+void PopulationManager::initializeGenetics() {
 
 	//set some variables for the simulation
-	this->poolSize = organismsUsed;
-	this->mutationRate = mutationRate;
-	this->percentRandom = percentRandom;
-	this->weightedBreeding = weightedBreeding;
-	this->originalDistribution[0] = percentPlant;
-	this->originalDistribution[1] = percentHerbivore;
-	this->originalDistribution[2] = percentCarnivore;
-	this->originalDistribution[3] = 1-(percentPlant + percentHerbivore + percentCarnivore);
-	this->originalDistribution[4] = percentRandom;
+	this->poolSize = this->simParams->populationCap;
+	this->percentRandom = this->simParams->initialRandomPercent;
+	this->originalDistribution[0] = this->simParams->spawnRates.at(0);
+	this->originalDistribution[1] = this->simParams->spawnRates.at(1);
+	this->originalDistribution[2] = this->simParams->spawnRates.at(2);
+	this->originalDistribution[3] = this->simParams->spawnRates.at(3);
+	this->originalDistribution[4] = this->simParams->randomPerBreedCycle;
 
-	int plantWeight = percentPlant*100;
-	int herbivoreWeight = percentHerbivore*100;
-	int carnivoreWeight = percentCarnivore*100;
-	int omnivoreWeight = 100 - plantWeight - herbivoreWeight - carnivoreWeight;
+	int plantWeight = this->originalDistribution[0]*100;
+	int herbivoreWeight = this->originalDistribution[1]*100;
+	int carnivoreWeight = this->originalDistribution[2]*100;
+	int omnivoreWeight = this->originalDistribution[3]*100;
 	int randomWeight = percentRandom * 100;
 
 	int totalWeight = plantWeight+herbivoreWeight+carnivoreWeight+omnivoreWeight+randomWeight;
@@ -112,10 +97,8 @@ void PopulationManager::initializeGenetics(int organismsUsed, double mutationRat
 	}
 
 	this->geneticsInitialized = true;
-}
 
-void PopulationManager::initializeEvolution(int tickLimit) {
-	this->tickLimit = tickLimit;
+	this->tickLimit = this->simParams->maxCycleCount;
 
 	this->evolutionInitialized = true;
 }

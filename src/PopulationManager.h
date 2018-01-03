@@ -28,14 +28,7 @@ public:
 	PopulationManager(Config* simConfig, Parameters* simParams, int seed = time(NULL));
 	virtual ~PopulationManager();
 
-	//Mutation rate is 0.00-1.00 percent variation added per iteration per gene
-	//Omnivores fill out the remaining percent
-	//Randoms will not eat into percent used by original organisms, ex: 0.3 random = 30% of total is random, other 70% divides for original
-	void initializeGenetics(int organismsUsed, double mutationRate,
-			float percentPlant, float percentHerbivore, float percentCarnivore,
-			float percentRandom = 0.0, bool weightedBreeding = true);
-
-	void initializeEvolution(int tickLimit);
+	void initializeGenetics();
 
 	void run();
 
@@ -87,10 +80,8 @@ private:
 
 	unsigned int poolSize;
 	float percentRandom;
-	float mutationRate;
 	float originalDistribution[4];
 	int originalCount[4];
-	bool weightedBreeding;
 
 	bool geneticsInitialized;
 	bool evolutionInitialized;
