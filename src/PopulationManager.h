@@ -19,7 +19,7 @@
 #include "support/Config.h"
 #include "support/Parameters.h"
 
-const int tickInfoFrequency = 100;
+const int tickInfoFrequency = 1;
 const int chanceToFailToBreed = 50;//%, if failure, corpse from prior cycle remains
 	//this adds an element of corpses to the food chain and population density
 
@@ -45,17 +45,17 @@ public:
 	int countOmnivores();
 	int countAnimals();
 
-	//Function will take in a count of 1 to MAX_WEIGHTS and return an index in that range -1
-	int getWeightedIndex(unsigned int possibleCount);
+	//Function will take a maximum range and flip coins on each index to decide if we "take" it, thus leading to exponentially less chance on each higher index
+	int getWeightedIndex(unsigned int maxIndex, unsigned int minIndex = 0);
 
 	Organism* getWeightedWeakest(vector<Organism*> &possibleTargets, unsigned int maxWeakestPullable, unsigned int &index);
+
+	Organism* pickRandomTemplate();
 
 	static bool sortByTough(Organism* i, Organism* j);
 	static bool sortByAgile(Organism* i, Organism* j);
 	static bool sortByIntelligence(Organism* i, Organism* j);
 	static bool sortTurnOrder(Organism* i, Organism* j);
-
-	static const unsigned int MAX_WEIGHTS = 100;
 
 private:
 	Organism* geneticPool;
@@ -64,8 +64,6 @@ private:
 
 	Config* simConfig;
 	Parameters* simParams;
-
-	unsigned int weightedTotal [MAX_WEIGHTS];
 
 	//Plants only have a toughness factor, as they aren't agile or smart in any way
 	//This will lead to herbivores having a toughness-based approach to evolution, which is natural in real life
@@ -81,12 +79,12 @@ private:
 	int tickLimit;
 
 	unsigned int poolSize;
-	float percentRandom;
-	float originalDistribution[4];
-	int originalCount[4];
+	vector<float> originalDistribution;
 
 	bool geneticsInitialized;
 	bool evolutionInitialized;
+
+	int cachedTotalProbability;
 };
 
 #endif /* POPULATIONMANAGER_H_ */

@@ -46,6 +46,10 @@ public:
 	virtual ~Organism();
 	void tickTurn();
 
+	//Will create a new organism based on the template
+	void instantiate(Organism* &organism_template);
+
+
 	bool attack();
 	//takes in a prey if a nonplant, will consume prey if they are passed and take in their food
 	void eat(Organism* prey = NULL);

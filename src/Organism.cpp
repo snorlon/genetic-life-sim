@@ -9,25 +9,43 @@
 #include <stdlib.h>
 
 Organism::Organism() {
-	//temp!!
-	this->food = (rand() % 100) + 1;
-	this->dead = false;
+	dead = false;
 
-	this->foodConsumption = 0;
-	this->foodCap = 5;
+	foodConsumption = 0;
+	foodCap = 5;
+
+	food = 0;
+
+	foodStatPenalty = 0.01;
+	foodStatVariancePenalty = 0.01;
+	foodProductionRate = 0;
+	foodCapMultiplier = 1.0;
+
+	toughnessMin = 0;
+	toughnessMax = 1;
+	toughnessVarianceMin = 0;
+	toughnessVarianceMax = 0;
+	agilityMin = 0;
+	agilityMax = 1;
+	agilityVarianceMin = 0;
+	agilityVarianceMax = 1;
+	intelligenceMin = 0;
+	intelligenceMax = 1;
+	intelligenceVarianceMin = 0;
+	intelligenceVarianceMax = 1;
 
 	//initial parameters
 
-	this->agility = 0;
-	this->agilityVariance = 0;
-	this->toughness = 0;
-	this->toughnessVariance = 0;
-	this->intelligence = 0;
-	this->intelligenceVariance = 0;
+	agility = 0;
+	agilityVariance = 0;
+	toughness = 0;
+	toughnessVariance = 0;
+	intelligence = 0;
+	intelligenceVariance = 0;
 
-	this->kills = 0;
+	kills = 0;
 
-	this->archtype = plant;
+	archtype = plant;
 
 	symbol = ' ';
 
@@ -47,6 +65,45 @@ Organism::Organism() {
 
 Organism::~Organism() {
 	// TODO Auto-generated destructor stub
+}
+
+void Organism::instantiate(Organism* &organism_template) {
+	dead = false;
+
+	foodStatPenalty = organism_template->foodStatPenalty;
+	foodStatVariancePenalty = organism_template->foodStatVariancePenalty;
+	foodProductionRate = organism_template->foodProductionRate;
+	foodCapMultiplier = organism_template->foodCapMultiplier;
+
+	//initial parameters
+
+	agility = randomStatInRange(organism_template->agilityMin, organism_template->agilityMax);
+	agilityVariance = randomStatInRange(organism_template->agilityVarianceMin, organism_template->agilityVarianceMax);
+	toughness = randomStatInRange(organism_template->toughnessMin, organism_template->toughnessMax);
+	toughnessVariance = randomStatInRange(organism_template->toughnessVarianceMin, organism_template->toughnessVarianceMax);
+	intelligence = randomStatInRange(organism_template->intelligenceMin, organism_template->intelligenceMax);
+	intelligenceVariance = randomStatInRange(organism_template->intelligenceVarianceMin, organism_template->intelligenceVarianceMax);
+
+	kills = 0;
+
+	archtype = organism_template->archtype;
+
+	symbol = organism_template->symbol;
+
+	eatsPlants = organism_template->eatsPlants;
+	eatsAnimals = organism_template->eatsAnimals;
+	eatsFungus = organism_template->eatsFungus;
+	eatsDead = organism_template->eatsDead;
+
+	cannibal = organism_template->cannibal;
+
+	breedThreshold = organism_template->breedThreshold;
+
+	suddenDeathChance = organism_template->suddenDeathChance;
+
+	mutationRate = organism_template->mutationRate;
+
+	recalculateFood();
 }
 
 void Organism::tickTurn() {
@@ -94,7 +151,7 @@ void Organism::eat(Organism* prey) {
 			currFood -= decayRate;
 		}
 
-		this->food += prey->food * divisor;
+		food += prey->food * divisor;
 	} else {
 		//otherwise, generate food based on our current size
 		float statDifference = productionRateComparisonUpperbound - getStatTotal();
@@ -114,7 +171,7 @@ void Organism::eat(Organism* prey) {
 			divisor /= 2;
 		}
 
-		this->food += foodGain * divisor;
+		food += foodGain * divisor;
 	}
 }
 
@@ -125,38 +182,38 @@ void Organism::consumeFood() {
 	}
 }
 
-void Organism::initialize(int toughness, int agility, int intelligence,
-		int toughnessVariance, int agilityVariance, int intelligenceVariance) {
-	this->dead = false;
-	this->toughness = toughness;
-	this->agility = agility;
-	this->intelligence = intelligence;
-	this->toughnessVariance = toughnessVariance;
-	this->agilityVariance = agilityVariance;
-	this->intelligenceVariance = intelligenceVariance;
+void Organism::initialize(int ntoughness, int nagility, int nintelligence,
+		int ntoughnessVariance, int nagilityVariance, int nintelligenceVariance) {
+	dead = false;
+	toughness = ntoughness;
+	agility = nagility;
+	intelligence = nintelligence;
+	toughnessVariance = ntoughnessVariance;
+	agilityVariance = nagilityVariance;
+	intelligenceVariance = nintelligenceVariance;
 
 	//cap variance to not exceed initial value
-	if(this->toughnessVariance > this->toughness) {
-		this->toughnessVariance = this->toughness;
+	if(toughnessVariance > toughness) {
+		toughnessVariance = toughness;
 	}
-	if(this->agilityVariance > this->agility) {
-		this->agilityVariance = this->agility;
+	if(agilityVariance > agility) {
+		agilityVariance = agility;
 	}
-	if(this->intelligenceVariance > this->intelligence) {
-		this->intelligenceVariance = this->intelligence;
+	if(intelligenceVariance > intelligence) {
+		intelligenceVariance = intelligence;
 	}
 
 	recalculateFood();
 }
 
-void Organism::initializeClass(ArchType archtype) {
-	this->archtype = archtype;
+void Organism::initializeClass(ArchType narchtype) {
+	archtype = narchtype;
 
-	if(this->archtype == plant) {
-		this->agility = 0;
-		this->intelligence = 0;
-		this->agilityVariance = 0;
-		this->intelligenceVariance = 0;
+	if(archtype == plant) {
+		agility = 0;
+		intelligence = 0;
+		agilityVariance = 0;
+		intelligenceVariance = 0;
 	}
 
 
@@ -164,7 +221,7 @@ void Organism::initializeClass(ArchType archtype) {
 }
 
 void Organism::initializeRandom(int maxStatRange, int maxStatVarianceRange) {
-	this->initialize((rand() % maxStatRange)+1, (rand() % maxStatRange)+1, (rand() % maxStatRange)+1,
+	initialize((rand() % maxStatRange)+1, (rand() % maxStatRange)+1, (rand() % maxStatRange)+1,
 			(rand() % maxStatVarianceRange)+1, (rand() % maxStatVarianceRange)+1, (rand() % maxStatVarianceRange)+1);
 }
 
@@ -174,16 +231,16 @@ float Organism::getValue(Stat stat, bool rollCheck) {
 	float maxRange = 0;
 	switch(stat) {
 	case Toughness:
-		val = this->toughness;
-		maxRange = this->toughnessVariance;
+		val = toughness;
+		maxRange = toughnessVariance;
 		break;
 	case Agility:
-		val = this->agility;
-		maxRange = this->agilityVariance;
+		val = agility;
+		maxRange = agilityVariance;
 		break;
 	case Intelligence:
-		val = this->intelligence;
-		maxRange = this->intelligenceVariance;
+		val = intelligence;
+		maxRange = intelligenceVariance;
 		break;
 	}
 
@@ -223,7 +280,7 @@ bool Organism::stronger(Organism* target, Stat stat, bool rollCheck) {
 		}
 	}
 
-	float ourStat = this->getValue(stat, rollCheck);
+	float ourStat = getValue(stat, rollCheck);
 	float theirStat = target->getValue(stat, rollCheck) * multiplier;
 
 	return (ourStat > theirStat);
@@ -276,7 +333,7 @@ int Organism::mutateStat(int value) {
 }
 
 float Organism::getStatTotal() {
-	return this->getValue(Toughness, false) + this->getValue(Agility, false) + this->getValue(Intelligence, false);
+	return getValue(Toughness, false) + getValue(Agility, false) + getValue(Intelligence, false);
 }
 
 int Organism::getToughness() {
@@ -294,10 +351,10 @@ int Organism::getIntelligence() {
 void Organism::recalculateFood() {
 
 	//base food consumption on stats
-	this->foodConsumption = (this->agility + this->intelligence + this->toughness)*0.03 +
-			(this->agilityVariance + this->intelligenceVariance + this->toughnessVariance)*0.05;
+	foodConsumption = (agility + intelligence + toughness)*0.03 +
+			(agilityVariance + intelligenceVariance + toughnessVariance)*0.05;
 
 
 	//base foodcap on consumption
-	this->foodCap = this->foodConsumption*2.1;
+	foodCap = foodConsumption*2.1;
 }

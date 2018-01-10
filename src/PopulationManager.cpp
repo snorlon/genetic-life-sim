@@ -10,22 +10,23 @@ using namespace std;
 
 #include "PopulationManager.h"
 
-PopulationManager::PopulationManager(Config* simConfig, Parameters* simParams, vector<Organism*> &templateOrganismTypes, int seed) {
+PopulationManager::PopulationManager(Config* nsimConfig, Parameters* nsimParams, vector<Organism*> &templateOrganismTypes, int seed) {
 	srand (seed);
 
-	this->simConfig = simConfig;
-	this->simParams = simParams;
+	simConfig = nsimConfig;
+	simParams = nsimParams;
 
-	this->percentRandom = 0;
-	this->poolSize = 5;
+	poolSize = 5;
 
-	this->geneticPool = NULL;
-	this->tick = 0;
-	this->tickLimit = 0;
-	this->geneticsInitialized = false;
-	this->evolutionInitialized = false;
+	geneticPool = NULL;
+	tick = 0;
+	tickLimit = 0;
+	geneticsInitialized = false;
+	evolutionInitialized = false;
 
 	organismTemplates = templateOrganismTypes;
+
+	cachedTotalProbability = 0;
 }
 
 PopulationManager::~PopulationManager() {
@@ -35,106 +36,56 @@ PopulationManager::~PopulationManager() {
 void PopulationManager::initializeGenetics() {
 
 	//set some variables for the simulation
-	this->poolSize = this->simParams->populationCap;
-	this->percentRandom = this->simParams->initialRandomPercent;
-	this->originalDistribution[0] = this->simParams->spawnRates.at(0);
-	this->originalDistribution[1] = this->simParams->spawnRates.at(1);
-	this->originalDistribution[2] = this->simParams->spawnRates.at(2);
-	this->originalDistribution[3] = this->simParams->spawnRates.at(3);
-	this->originalDistribution[4] = this->simParams->randomPerBreedCycle;
+	poolSize = simParams->populationCap;
+	originalDistribution = simParams->spawnRates;
 
-	int plantWeight = this->originalDistribution[0]*100;
-	int herbivoreWeight = this->originalDistribution[1]*100;
-	int carnivoreWeight = this->originalDistribution[2]*100;
-	int omnivoreWeight = this->originalDistribution[3]*100;
-	int randomWeight = percentRandom * 100;
-
-	int totalWeight = plantWeight+herbivoreWeight+carnivoreWeight+omnivoreWeight+randomWeight;
 
 	//generate our initial organism data
-	this->geneticPool = new Organism[this->poolSize];
-	for(unsigned int index=0; index<this->poolSize; index++) {
-		//give them a balanced chance of each archtype
-		int roll = rand() % totalWeight;
+	geneticPool = new Organism[poolSize];
+	for(unsigned int index=0; index<poolSize; index++) {
+		Organism* rolledTemplate = pickRandomTemplate();
 
-		roll -= plantWeight;
-		if(roll < 0) {
-			this->geneticPool[index].initializeClass(plant);
-		} else {
-			roll -= herbivoreWeight;
-			if(roll < 0) {
-				this->geneticPool[index].initializeClass(herbivore);
-			} else {
-				roll -= carnivoreWeight;
-				if(roll < 0) {
-					this->geneticPool[index].initializeClass(carnivore);
-				} else {
-					roll -= omnivoreWeight;
-					if(roll < 0) {
-						this->geneticPool[index].initializeClass(omnivore);
-					} else {
-						this->geneticPool[index].initializeClass((ArchType)(rand() % 4));
-					}
-				}
-			}
-		}
+		geneticPool[index].instantiate(rolledTemplate);
 
-		//initialize them with a range of random values
-		this->geneticPool[index].initializeRandom(70, 30);
 	}
 
-	this->originalCount[0] = this->countPlants();
-	this->originalCount[1] = this->countHerbivores();
-	this->originalCount[2] = this->countCarnivores();
-	this->originalCount[3] = this->countOmnivores();
+	geneticsInitialized = true;
 
-	//prime weighting array, upper bound of 100 for now, assuming that's the max to draw from
+	tickLimit = simParams->maxCycleCount;
 
-	for(unsigned int i=0; i<this->MAX_WEIGHTS; i++) {
-		if(i==0) {
-			this->weightedTotal[i] = i+1;
-		} else {
-			this->weightedTotal[i] = i + this->weightedTotal[i-1];
-		}
-	}
-
-	this->geneticsInitialized = true;
-
-	this->tickLimit = this->simParams->maxCycleCount;
-
-	this->evolutionInitialized = true;
+	evolutionInitialized = true;
 }
 
 void PopulationManager::run() {
-	if(!this->geneticsInitialized) {
+	if(!geneticsInitialized) {
 		cout<<"Genetics were not initialized!"<<endl;
 		return;
 	}
 
-	if(!this->evolutionInitialized) {
+	if(!evolutionInitialized) {
 		cout<<"Evolution was not initialized!"<<endl;
 		return;
 	}
 
-	while(this->tick < this->tickLimit || this->tickLimit == 0) {
+	while(tick < tickLimit || tickLimit == 0) {
 
-		this->tickTurn();
+		tickTurn();
 
-		this->tick = this->tick + 1;
+		tick = tick + 1;
 
-		if(this->tick % tickInfoFrequency == 0 || this->tick == 1) {
-			cout<<"Tick " << this->tick <<": [ "<<this->countPlants()<<"p "<<this->countHerbivores()<<"h "
-					<<this->countCarnivores()<<"c "<<this->countOmnivores()<<"o ] Alive at end of tick" << endl;
+		if(tick % tickInfoFrequency == 0 || tick == 1) {
+			cout<<"Tick " << tick <<": [ "<<countPlants()<<"p "<<countHerbivores()<<"h "
+					<<countCarnivores()<<"c "<<countOmnivores()<<"o ] Alive at end of tick" << endl;
 		}
 	}
 	cout<<"Simulation has reached tick limit."<<endl;
 
-	cout<<"Ending simulation with "<<this->countPlants()<<" from "<<this->originalCount[0]<<" plants."<<endl;
-	cout<<"Ending simulation with "<<this->countHerbivores()<<" from "<<this->originalCount[1]<<" herbivores."<<endl;
-	cout<<"Ending simulation with "<<this->countCarnivores()<<" from "<<this->originalCount[2]<<" carnivores."<<endl;
-	cout<<"Ending simulation with "<<this->countOmnivores()<<" from "<<this->originalCount[3]<<" omnivores."<<endl;
+	cout<<"Ending simulation with "<<countPlants()<<" plants."<<endl;
+	cout<<"Ending simulation with "<<countHerbivores()<<" herbivores."<<endl;
+	cout<<"Ending simulation with "<<countCarnivores()<<" carnivores."<<endl;
+	cout<<"Ending simulation with "<<countOmnivores()<<" omnivores."<<endl;
 
-	this->end();
+	end();
 
 	//run test on weighted random system
 	/*int testIndexCount = 100;
@@ -144,7 +95,7 @@ void PopulationManager::run() {
 		counts[i] = 0;
 	}
 	for(int i=0; i<testSize; i++) {
-		counts[this->getWeightedIndex(testIndexCount)]++;
+		counts[getWeightedIndex(testIndexCount)]++;
 	}
 	for(int i=0; i<testIndexCount / 10; i++) {
 		for(int j=0; j<10; j++) {
@@ -157,49 +108,49 @@ void PopulationManager::run() {
 void PopulationManager::end() {
 	//Output results here, such as population changes, organisms consumed, organisms killed, and genetic distribution across population
 
-	delete[] this->geneticPool;
-	this->geneticPool = NULL;
+	delete[] geneticPool;
+	geneticPool = NULL;
 }
 
 void PopulationManager::tickTurn() {
 	//clear prior cache data
-	this->plantLeastTough.clear();
-	this->creatureLeastTough.clear();
-	this->creatureLeastAgile.clear();
-	this->creatureLeastSmart.clear();
+	plantLeastTough.clear();
+	creatureLeastTough.clear();
+	creatureLeastAgile.clear();
+	creatureLeastSmart.clear();
 
-	this->creatureTurnOrder.clear();
+	creatureTurnOrder.clear();
 
 	//populate caches for plants, creatures
-	//this->plantLeastTough.push_back(X);
+	//plantLeastTough.push_back(X);
 	for(unsigned int i=0; i < poolSize; i++) {
 		//if any are dead, we shouldn't add them
-		if(this->geneticPool[i].dead) {
+		if(geneticPool[i].dead) {
 			continue;
 		}
 
 		//push separately for plants and creatures
-		if(this->geneticPool[i].archtype == plant) {
+		if(geneticPool[i].archtype == plant) {
 			//plants get pushed to 1 vector
-			this->plantLeastTough.push_back(&this->geneticPool[i]);
+			plantLeastTough.push_back(&geneticPool[i]);
 		}
 		else {
 			//creatures get pushed to 3 vectors
-			this->creatureLeastTough.push_back(&this->geneticPool[i]);
-			this->creatureLeastAgile.push_back(&this->geneticPool[i]);
-			this->creatureLeastSmart.push_back(&this->geneticPool[i]);
-			this->creatureTurnOrder.push_back(&this->geneticPool[i]);
+			creatureLeastTough.push_back(&geneticPool[i]);
+			creatureLeastAgile.push_back(&geneticPool[i]);
+			creatureLeastSmart.push_back(&geneticPool[i]);
+			creatureTurnOrder.push_back(&geneticPool[i]);
 		}
 	}
 
 	//sort caches by stat
-	sort(this->plantLeastTough.begin(), this->plantLeastTough.end(), sortByTough);
-	sort(this->creatureLeastTough.begin(), this->creatureLeastTough.end(), sortByTough);
-	sort(this->creatureLeastAgile.begin(), this->creatureLeastAgile.end(), sortByAgile);
-	sort(this->creatureLeastSmart.begin(), this->creatureLeastSmart.end(), sortByIntelligence);
+	sort(plantLeastTough.begin(), plantLeastTough.end(), sortByTough);
+	sort(creatureLeastTough.begin(), creatureLeastTough.end(), sortByTough);
+	sort(creatureLeastAgile.begin(), creatureLeastAgile.end(), sortByAgile);
+	sort(creatureLeastSmart.begin(), creatureLeastSmart.end(), sortByIntelligence);
 
 	//sort turn order by stat total
-	sort(this->creatureTurnOrder.begin(), this->creatureTurnOrder.end(), sortTurnOrder);
+	sort(creatureTurnOrder.begin(), creatureTurnOrder.end(), sortTurnOrder);
 
 	//cache size of each creature group
 	int plantCount = countPlants();
@@ -209,8 +160,8 @@ void PopulationManager::tickTurn() {
 
 	//grant each creature an attack cycle
 	for(unsigned int i=0; i < poolSize; i++) {
-		ArchType creatureArchtype = this->geneticPool[i].archtype;
-		Organism* self = &this->geneticPool[i];
+		ArchType creatureArchtype = geneticPool[i].archtype;
+		Organism* self = &geneticPool[i];
 
 		//the dead can't attack or eat...
 		if(self->dead) {
@@ -241,11 +192,11 @@ void PopulationManager::tickTurn() {
 		case herbivore:
 			//picks a random plant out of all plants, takes food from plant if possible
 			//ensure there's at least two plants first..
-			if(this->plantLeastTough.size() > 0) {
+			if(plantLeastTough.size() > 0) {
 				//attempt multiple hunts if we fail the first time
-				for(int j=0; j<5 && !fed && this->plantLeastTough.size() > 0; j++) {
-					rolledIndex = rand() % this->plantLeastTough.size();
-					rolledTarget = this->plantLeastTough.at(rolledIndex);
+				for(int j=0; j<5 && !fed && plantLeastTough.size() > 0; j++) {
+					rolledIndex = rand() % plantLeastTough.size();
+					rolledTarget = plantLeastTough.at(rolledIndex);
 
 					bool successfulHunting = self->stronger(rolledTarget, Toughness, true);
 
@@ -262,14 +213,14 @@ void PopulationManager::tickTurn() {
 			//grabs weakest 20(PARAMETER?) of each stat, excluding self and those stronger than us in that stat
 			pullable = 20;
 
-			rolledTarget = getWeightedWeakest(this->creatureLeastTough, pullable, rolledIndex1);
-			rolledTarget2 = getWeightedWeakest(this->creatureLeastAgile, pullable, rolledIndex2);
-			rolledTarget3 = getWeightedWeakest(this->creatureLeastSmart, pullable, rolledIndex3);
+			rolledTarget = getWeightedWeakest(creatureLeastTough, pullable, rolledIndex1);
+			rolledTarget2 = getWeightedWeakest(creatureLeastAgile, pullable, rolledIndex2);
+			rolledTarget3 = getWeightedWeakest(creatureLeastSmart, pullable, rolledIndex3);
 
-			chosenGroup = &this->creatureLeastTough;
+			chosenGroup = &creatureLeastTough;
 
 			//lives or dies on killing target
-			if(this->creatureLeastTough.size() > 0) {
+			if(creatureLeastTough.size() > 0) {
 				//picks randomly from these on whom to attack
 				rolledIndex = rand() % 3;
 
@@ -277,12 +228,12 @@ void PopulationManager::tickTurn() {
 				case 1:
 					rolledIndex1 = rolledIndex2;
 					rolledTarget = rolledTarget2;
-					chosenGroup = &this->creatureLeastAgile;
+					chosenGroup = &creatureLeastAgile;
 					break;
 				case 2:
 					rolledIndex1 = rolledIndex3;
 					rolledTarget = rolledTarget3;
-					chosenGroup = &this->creatureLeastSmart;
+					chosenGroup = &creatureLeastSmart;
 					break;
 				default:
 					break;
@@ -308,11 +259,11 @@ void PopulationManager::tickTurn() {
 			break;
 		case omnivore:
 			//attempts hunting weakest 5 creatures, and 3 plants
-			if(this->plantLeastTough.size() > 1) {
+			if(plantLeastTough.size() > 1) {
 				//attempt multiple rolls if we fail the first time
 				for(int j=0; j<3 && !fed; j++) {
-					rolledIndex = rand() % this->plantLeastTough.size();
-					rolledTarget = this->plantLeastTough.at(rolledIndex);
+					rolledIndex = rand() % plantLeastTough.size();
+					rolledTarget = plantLeastTough.at(rolledIndex);
 
 					bool successfulHunting = self->stronger(rolledTarget, Toughness, true);
 
@@ -328,14 +279,14 @@ void PopulationManager::tickTurn() {
 			//gets to attempt both, plant first, animal if plant fails
 			pullable = 5;
 
-			rolledTarget = getWeightedWeakest(this->creatureLeastTough, pullable, rolledIndex1);
-			rolledTarget2 = getWeightedWeakest(this->creatureLeastAgile, pullable, rolledIndex2);
-			rolledTarget3 = getWeightedWeakest(this->creatureLeastSmart, pullable, rolledIndex3);
+			rolledTarget = getWeightedWeakest(creatureLeastTough, pullable, rolledIndex1);
+			rolledTarget2 = getWeightedWeakest(creatureLeastAgile, pullable, rolledIndex2);
+			rolledTarget3 = getWeightedWeakest(creatureLeastSmart, pullable, rolledIndex3);
 
-			chosenGroup = &this->creatureLeastTough;
+			chosenGroup = &creatureLeastTough;
 
 			//lives or dies on killing target
-			if(this->creatureLeastTough.size() > 0 && !fed) {
+			if(creatureLeastTough.size() > 0 && !fed) {
 				//picks randomly from these on whom to attack
 				rolledIndex = rand() % 3;
 
@@ -343,12 +294,12 @@ void PopulationManager::tickTurn() {
 				case 1:
 					rolledIndex1 = rolledIndex2;
 					rolledTarget = rolledTarget2;
-					chosenGroup = &this->creatureLeastAgile;
+					chosenGroup = &creatureLeastAgile;
 					break;
 				case 2:
 					rolledIndex1 = rolledIndex3;
 					rolledTarget = rolledTarget3;
-					chosenGroup = &this->creatureLeastSmart;
+					chosenGroup = &creatureLeastSmart;
 					break;
 				default:
 					break;
@@ -377,11 +328,11 @@ void PopulationManager::tickTurn() {
 
 		//kill any creature that can't pay the food tax that is life
 		for(unsigned int i=0; i < poolSize; i++) {
-			if(this->geneticPool[i].dead) {
+			if(geneticPool[i].dead) {
 				continue;
 			}
 
-			this->geneticPool[i].consumeFood();
+			geneticPool[i].consumeFood();
 		}
 
 
@@ -424,8 +375,8 @@ void PopulationManager::tickTurn() {
 	deadCreatures.clear();
 
 	for(unsigned int i=0; i < poolSize; i++) {
-		ArchType creatureArchtype = this->geneticPool[i].archtype;
-		Organism* self = &this->geneticPool[i];
+		ArchType creatureArchtype = geneticPool[i].archtype;
+		Organism* self = &geneticPool[i];
 
 		if(self->dead == true) {
 			deadCreatures.push_back(self);
@@ -571,7 +522,7 @@ int PopulationManager::countPlants() {
 	int count = 0;
 
 	for(unsigned int i=0; i<poolSize; i++) {
-		if(this->geneticPool[i].archtype == plant && !this->geneticPool[i].dead) {
+		if(geneticPool[i].archtype == plant && !geneticPool[i].dead) {
 			count++;
 		}
 	}
@@ -583,7 +534,7 @@ int PopulationManager::countHerbivores() {
 	int count = 0;
 
 	for(unsigned int i=0; i<poolSize; i++) {
-		if(this->geneticPool[i].archtype == herbivore && !this->geneticPool[i].dead) {
+		if(geneticPool[i].archtype == herbivore && !geneticPool[i].dead) {
 			count++;
 		}
 	}
@@ -595,7 +546,7 @@ int PopulationManager::countCarnivores() {
 	int count = 0;
 
 	for(unsigned int i=0; i<poolSize; i++) {
-		if(this->geneticPool[i].archtype == carnivore && !this->geneticPool[i].dead) {
+		if(geneticPool[i].archtype == carnivore && !geneticPool[i].dead) {
 			count++;
 		}
 	}
@@ -607,7 +558,7 @@ int PopulationManager::countOmnivores() {
 	int count = 0;
 
 	for(unsigned int i=0; i<poolSize; i++) {
-		if(this->geneticPool[i].archtype == omnivore && !this->geneticPool[i].dead) {
+		if(geneticPool[i].archtype == omnivore && !geneticPool[i].dead) {
 			count++;
 		}
 	}
@@ -619,7 +570,7 @@ int PopulationManager::countAnimals() {
 	int count = 0;
 
 	for(unsigned int i=0; i<poolSize; i++) {
-		if(this->geneticPool[i].archtype != plant && !this->geneticPool[i].dead) {
+		if(geneticPool[i].archtype != plant && !geneticPool[i].dead) {
 			count++;
 		}
 	}
@@ -645,25 +596,19 @@ bool PopulationManager::sortTurnOrder(Organism* i, Organism* j) {
 	return total_i < total_j;
 }
 
-//Function will take in a count of 1 to MAX_WEIGHTS and return an index in that range -1
-int PopulationManager::getWeightedIndex(unsigned int possibleCount) {
-	if(possibleCount > MAX_WEIGHTS) {
-		possibleCount = MAX_WEIGHTS;
-	}
-	int total = weightedTotal[possibleCount-1];
-	int roll = rand() % total;
+//Currently 30% chance of taking a given
+int PopulationManager::getWeightedIndex(unsigned int maxIndex, unsigned int minIndex) {
+	int threshold = 30;
 
 	//iterate across, reducing till we get our roll
-	for(unsigned int i=possibleCount-1; i>0; i--) {
-		roll -= i;
-
-		if(roll < 0) {
+	for(unsigned int i=minIndex; i<=maxIndex; i++) {
+		if(rand() % 100 < threshold) {
 			return i;
 		}
 	}
 
-	//by default!
-	return 0;
+	//by default, return the last possible option as a safeguard
+	return maxIndex;
 }
 
 Organism* PopulationManager::getWeightedWeakest(vector<Organism*> &possibleTargets, unsigned int maxWeakestPullable, unsigned int &index) {
@@ -671,7 +616,30 @@ Organism* PopulationManager::getWeightedWeakest(vector<Organism*> &possibleTarge
 		maxWeakestPullable = possibleTargets.size();
 	}
 
-	index = this->getWeightedIndex(maxWeakestPullable);
+	index = getWeightedIndex(maxWeakestPullable);
 
 	return possibleTargets.at(index);
+}
+
+
+Organism* PopulationManager::pickRandomTemplate() {
+	//recalculate cached probability total if not set yet
+	if(cachedTotalProbability == 0) {
+		for(unsigned int i=0; i<originalDistribution.size() && i<organismTemplates.size(); i++) {
+			cachedTotalProbability += originalDistribution.at(i);
+		}
+	}
+
+	int rolledProbability = rand() % cachedTotalProbability;
+
+	//pick a weighted choice among our templates to use
+	for(unsigned int i=0; i<originalDistribution.size() && i<organismTemplates.size(); i++) {
+		rolledProbability -= originalDistribution.at(i);
+
+		if(rolledProbability < 0) {
+			return organismTemplates.at(i);
+		}
+	}
+
+	return organismTemplates.at(organismTemplates.size() - 1);
 }

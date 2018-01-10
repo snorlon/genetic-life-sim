@@ -36,8 +36,7 @@ int main() {
 	PopulationManager popManager(&simConfig, &simParams, templateOrganismTypes);
 
 	popManager.initializeGenetics();
-	//popManager.run();
+	popManager.run();
 
-	//cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!
 	return 0;
 }

@@ -8,7 +8,15 @@
 #include "Parameters.h"
 
 Parameters::Parameters() {
-	// TODO Auto-generated constructor stub
+	statFoodPenalty = 0.01;
+	statVarianceFoodPenalty = 0.01;
+
+	initialRandomPercent = 0.1;
+	randomPerBreedCycle = 0.1;
+
+	populationCap = 10;
+
+	maxCycleCount = 5;
 
 }
 
