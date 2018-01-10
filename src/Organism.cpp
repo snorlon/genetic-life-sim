@@ -75,8 +75,6 @@ void Organism::instantiate(Organism* &organism_template) {
 	foodProductionRate = organism_template->foodProductionRate;
 	foodCapMultiplier = organism_template->foodCapMultiplier;
 
-	//initial parameters
-
 	agility = randomStatInRange(organism_template->agilityMin, organism_template->agilityMax);
 	agilityVariance = randomStatInRange(organism_template->agilityVarianceMin, organism_template->agilityVarianceMax);
 	toughness = randomStatInRange(organism_template->toughnessMin, organism_template->toughnessMax);
@@ -104,6 +102,14 @@ void Organism::instantiate(Organism* &organism_template) {
 	mutationRate = organism_template->mutationRate;
 
 	recalculateFood();
+
+	//for future generations
+	agilityMin = organism_template->agilityMin;
+	agilityVarianceMin = organism_template->agilityVarianceMin;
+	toughnessMin = organism_template->toughnessMin;
+	toughnessVarianceMin = organism_template->toughnessVarianceMin;
+	intelligenceMin = organism_template->intelligenceMin;
+	intelligenceVarianceMin = organism_template->intelligenceVarianceMin;
 }
 
 void Organism::tickTurn() {
