@@ -22,6 +22,7 @@ public:
 
 	void readParameters(Parameters* parameters, string filename = "files/parameters.config");
 	void readConfig(Config* config);
+	vector<Organism*> readOrganisms(string filename = "files/classes.config");
 };
 
 #endif /* SUPPORT_FILEREADER_H_ */

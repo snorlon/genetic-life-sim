@@ -25,7 +25,7 @@ const int chanceToFailToBreed = 50;//%, if failure, corpse from prior cycle rema
 
 class PopulationManager {
 public:
-	PopulationManager(Config* simConfig, Parameters* simParams, int seed = time(NULL));
+	PopulationManager(Config* simConfig, Parameters* simParams, vector<Organism*> &templateOrganismTypes, int seed = time(NULL));
 	virtual ~PopulationManager();
 
 	void initializeGenetics();
@@ -59,6 +59,8 @@ public:
 
 private:
 	Organism* geneticPool;
+
+	vector<Organism*> organismTemplates;
 
 	Config* simConfig;
 	Parameters* simParams;

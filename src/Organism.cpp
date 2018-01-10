@@ -28,6 +28,21 @@ Organism::Organism() {
 	this->kills = 0;
 
 	this->archtype = plant;
+
+	symbol = ' ';
+
+	eatsPlants = false;
+	eatsAnimals = false;
+	eatsFungus = false;
+	eatsDead = false;
+
+	cannibal = false;
+
+	breedThreshold = 1.0;
+
+	suddenDeathChance = 0.00;
+
+	mutationRate = 1;
 }
 
 Organism::~Organism() {
@@ -214,18 +229,18 @@ bool Organism::stronger(Organism* target, Stat stat, bool rollCheck) {
 	return (ourStat > theirStat);
 }
 
-void Organism::beBorn(Organism* parent1, Organism* parent2, int mutationRate) {
+void Organism::beBorn(Organism* parent1, Organism* parent2) {
 	dead = false;
 	archtype = parent1->archtype;
 
-	toughness = mutateStat(randomStatInRange(parent1->toughness, parent2->toughness), mutationRate);
-	agility = mutateStat(randomStatInRange(parent1->agility, parent2->agility), mutationRate);
-	intelligence = mutateStat(randomStatInRange(parent1->intelligence, parent2->intelligence), mutationRate);
+	toughness = mutateStat(randomStatInRange(parent1->toughness, parent2->toughness));
+	agility = mutateStat(randomStatInRange(parent1->agility, parent2->agility));
+	intelligence = mutateStat(randomStatInRange(parent1->intelligence, parent2->intelligence));
 
 
-	toughnessVariance = mutateStat(randomStatInRange(parent1->toughnessVariance, parent2->toughnessVariance), mutationRate);
-	agilityVariance = mutateStat(randomStatInRange(parent1->agilityVariance, parent2->agilityVariance), mutationRate);
-	intelligenceVariance = mutateStat(randomStatInRange(parent1->intelligenceVariance, parent2->intelligenceVariance), mutationRate);
+	toughnessVariance = mutateStat(randomStatInRange(parent1->toughnessVariance, parent2->toughnessVariance));
+	agilityVariance = mutateStat(randomStatInRange(parent1->agilityVariance, parent2->agilityVariance));
+	intelligenceVariance = mutateStat(randomStatInRange(parent1->intelligenceVariance, parent2->intelligenceVariance));
 }
 
 int Organism::randomStatInRange(int val1, int val2) {
@@ -248,7 +263,7 @@ int Organism::randomStatInRange(int val1, int val2) {
 	return rolled + lower;
 }
 
-int Organism::mutateStat(int value, int mutationRate) {
+int Organism::mutateStat(int value) {
 	int mutationAmount = (rand() % (mutationRate*2)) - mutationRate;
 
 	int newValue = value + mutationAmount;

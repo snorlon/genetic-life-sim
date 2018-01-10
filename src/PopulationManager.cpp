@@ -10,7 +10,7 @@ using namespace std;
 
 #include "PopulationManager.h"
 
-PopulationManager::PopulationManager(Config* simConfig, Parameters* simParams, int seed) {
+PopulationManager::PopulationManager(Config* simConfig, Parameters* simParams, vector<Organism*> &templateOrganismTypes, int seed) {
 	srand (seed);
 
 	this->simConfig = simConfig;
@@ -24,6 +24,8 @@ PopulationManager::PopulationManager(Config* simConfig, Parameters* simParams, i
 	this->tickLimit = 0;
 	this->geneticsInitialized = false;
 	this->evolutionInitialized = false;
+
+	organismTemplates = templateOrganismTypes;
 }
 
 PopulationManager::~PopulationManager() {
@@ -556,7 +558,7 @@ void PopulationManager::tickTurn() {
 
 			if(parent2 != NULL) {
 				//update corpses' data to be a mix of parents with mutation
-				self->beBorn(parent1, parent2, 3);
+				self->beBorn(parent1, parent2);
 			}
 		}
 

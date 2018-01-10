@@ -22,13 +22,21 @@ int main() {
 	Config simConfig;
 	Parameters simParams;
 	FileReader simFileReader;
+	vector<Organism*> templateOrganismTypes;
 
 	simFileReader.readParameters(&simParams);
 
-	PopulationManager popManager(&simConfig, &simParams);
+	//Creates a vector of organism designs from the file
+	templateOrganismTypes = simFileReader.readOrganisms();
+	if(templateOrganismTypes.size() <= 0) {
+		cout<<"Critical error! No organism templates loaded! Aborting execution."<<endl;
+		return -1;
+	}
+
+	PopulationManager popManager(&simConfig, &simParams, templateOrganismTypes);
 
 	popManager.initializeGenetics();
-	popManager.run();
+	//popManager.run();
 
 	//cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!
 	return 0;

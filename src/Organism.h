@@ -11,7 +11,7 @@
 #include <string>
 #include <stdlib.h>
 
-enum ArchType { plant, herbivore, omnivore, carnivore };
+enum ArchType { plant, herbivore, omnivore, carnivore, animalia, fungus };
 enum Stat { Toughness, Agility, Intelligence };
 
 //plant variables
@@ -62,7 +62,7 @@ public:
 	float getValue(Stat stat, bool rollCheck = true);
 	bool stronger(Organism* target, Stat stat, bool rollCheck = true);
 
-	void beBorn(Organism* parent1, Organism* parent2, int mutationRate);
+	void beBorn(Organism* parent1, Organism* parent2);
 
 	float getStatTotal();
 
@@ -73,7 +73,18 @@ public:
 	void recalculateFood();
 
 	std::string name;
+	std::string symbol;
 	ArchType archtype;
+
+	bool eatsPlants;
+	bool eatsAnimals;
+	bool eatsFungus;
+	bool eatsDead;
+
+	bool cannibal;
+
+	double suddenDeathChance;
+
 
 
 	//food is gained on kills, 50% of targets food is gained
@@ -93,6 +104,30 @@ public:
 
 	bool dead;
 
+	//constants for type (for now)
+	int mutationRate;
+
+	double breedThreshold;
+
+	double foodStatPenalty;//bonus food consumption multiplier for stat total
+	double foodStatVariancePenalty;//bonus food consumption multiplier for variance total
+	double foodProductionRate;//% of stat total produced per turn
+	double foodCapMultiplier;//% of food consumption that can be stored in stomach
+
+	//used only for creating organisms in this type
+	int toughnessMin;
+	int toughnessMax;
+	int agilityMin;
+	int agilityMax;
+	int intelligenceMin;
+	int intelligenceMax;
+	int toughnessVarianceMin;
+	int toughnessVarianceMax;
+	int agilityVarianceMin;
+	int agilityVarianceMax;
+	int intelligenceVarianceMin;
+	int intelligenceVarianceMax;
+
 protected:
 
 	int toughness;
@@ -105,7 +140,7 @@ protected:
 
 	//returns a random value between two integers without relationship
 	int randomStatInRange(int val1, int val2);
-	int mutateStat(int value, int mutationRate);
+	int mutateStat(int value);
 };
 
 #endif /* ORGANISM_H_ */
