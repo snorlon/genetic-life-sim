@@ -117,67 +117,29 @@ void Organism::tickTurn() {
 }
 
 void Organism::eat(Organism* prey) {
-	//consume prey's food if not a plant
-	if(archtype != plant) {
-		int currFood = food;
+	//can only consume up to 40% of food from target, remainder on target is halved
+	if(prey != NULL) {
 		//determine how much we're taking from target, limited by our stomach size
-		int foodConsumed = prey->food;
-		if(foodConsumed > foodCap) {
-			foodConsumed = foodCap;
+		int foodConsumed = prey->food * 0.4;
+		int foodAvailableSpace = foodCap - food;
+		if(foodAvailableSpace < 0) {
+			foodAvailableSpace = 0;
+		}
+
+		if(foodConsumed > foodAvailableSpace) {
+			foodConsumed = foodAvailableSpace;
 		}
 
 		//remove the food consumed from the creature so that it can try to not die ;)
 		prey->food -= foodConsumed;
+		//also, inflict a 10% loss on the prey after we've taken our share
+		prey->food *= 0.9;
 
-		//default food loss multiplier
-		float divisor = 0.1;
-		//default decay rate
-		int decayRate = 500;
-
-		switch(archtype) {
-		case herbivore:
-			divisor = herbivoreConsumptionGain;
-			decayRate = herbivoreFoodGainDecay;
-			break;
-		case carnivore:
-			divisor = carnivoreConsumptionGain;
-			decayRate = carnivoreFoodGainDecay;
-			break;
-		case omnivore:
-			divisor = omnivoreConsumptionGain;
-			decayRate = omnivoreFoodGainDecay;
-			break;
-		default:
-			break;
-		}
-
-		//for each 'decayRate' food we have, we divide what we consume more
-		while(currFood > decayRate) {
-			divisor /= 2;
-			currFood -= decayRate;
-		}
-
-		food += prey->food * divisor;
+		food += foodConsumed;
 	} else {
-		//otherwise, generate food based on our current size
-		float statDifference = productionRateComparisonUpperbound - getStatTotal();
+		int foodGain = getSize() * foodProductionRate;
 
-		//prevent negative values
-		if(statDifference < 0) {
-			statDifference = 0;
-		}
-
-		int foodGain = statDifference * baseProductionRate;
-		int currFood = food;
-		float divisor = 1.0;
-
-		//apply decay on all gained food
-		while(currFood> plantFoodGainDecay) {
-			currFood -= plantFoodGainDecay;
-			divisor /= 2;
-		}
-
-		food += foodGain * divisor;
+		food += foodGain;
 	}
 }
 
@@ -267,29 +229,39 @@ bool Organism::stronger(Organism* target, Stat stat, bool rollCheck) {
 		return true;
 	}
 
-	float multiplier = 1.0;
 	//plants take penalty vs every organism, herbivores take penalty vs carnivores and omnivores
 	//carnivores take advantage defensively vs other carnivores and omnivores
 	//this will create a stronger advantage for archtypes of creatures
 	//but only apply during rollCheck, as this is used for actual damage calculations
-	if(rollCheck) {
-		if(target->archtype == plant) {
-			multiplier = 0.8;
-		} else if(target->archtype == herbivore) {
-			if(archtype == carnivore) {
-				multiplier = 0.8;
-			} else {
-				multiplier = 0.9;
-			}
-		} else if(target->archtype == carnivore) {
-			multiplier = 1.1;
-		}
-	}
 
 	float ourStat = getValue(stat, rollCheck);
-	float theirStat = target->getValue(stat, rollCheck) * multiplier;
+	float theirStat = target->getValue(stat, rollCheck);
 
 	return (ourStat > theirStat);
+}
+
+
+float Organism::getBabyFood() {//gets the value of how much baby food we have set aside of our own
+	return breedThreshold * foodConsumption;
+}
+
+float Organism::takeBabyFood() {
+	//return 0 if we simply can't fulfill this request
+	if(food < getBabyFood()) {
+		return 0;
+	}
+
+	food -= getBabyFood();
+	return getBabyFood();
+}
+
+bool Organism::canBreed() {//checks if we have enough food to spare
+	//arbitrary 80% of food is preserved beyond reproduction requirements
+	if(food >= getBabyFood() + foodConsumption * 0.8) {
+		return true;
+	}
+
+	return false;
 }
 
 void Organism::beBorn(Organism* parent1, Organism* parent2) {
@@ -300,10 +272,30 @@ void Organism::beBorn(Organism* parent1, Organism* parent2) {
 	agility = mutateStat(randomStatInRange(parent1->agility, parent2->agility));
 	intelligence = mutateStat(randomStatInRange(parent1->intelligence, parent2->intelligence));
 
-
 	toughnessVariance = mutateStat(randomStatInRange(parent1->toughnessVariance, parent2->toughnessVariance));
 	agilityVariance = mutateStat(randomStatInRange(parent1->agilityVariance, parent2->agilityVariance));
 	intelligenceVariance = mutateStat(randomStatInRange(parent1->intelligenceVariance, parent2->intelligenceVariance));
+
+	foodStatPenalty = parent1->foodStatPenalty;
+	foodStatVariancePenalty = parent1->foodStatVariancePenalty;
+	foodProductionRate = parent1->foodProductionRate;
+	foodCapMultiplier = parent1->foodCapMultiplier;
+	kills = 0;
+
+	symbol = parent1->symbol;
+
+	eatsPlants = parent1->eatsPlants;
+	eatsAnimals = parent1->eatsAnimals;
+	eatsFungus = parent1->eatsFungus;
+	eatsDead = parent1->eatsDead;
+
+	cannibal = parent1->cannibal;
+
+	breedThreshold = parent1->breedThreshold;
+
+	suddenDeathChance = parent1->suddenDeathChance;
+
+	mutationRate = parent1->mutationRate;
 }
 
 int Organism::randomStatInRange(int val1, int val2) {
@@ -338,7 +330,7 @@ int Organism::mutateStat(int value) {
 	return newValue;
 }
 
-float Organism::getStatTotal() {
+int Organism::getSize() {
 	return getValue(Toughness, false) + getValue(Agility, false) + getValue(Intelligence, false);
 }
 

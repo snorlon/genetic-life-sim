@@ -105,7 +105,7 @@ vector<Organism*> FileReader::readOrganisms(string filename) {
 				newOrganism->archtype = plant;
 			}
 			else if(value.compare("Animal") == 0) {
-				newOrganism->archtype = animalia;
+				newOrganism->archtype = animal;
 			}
 			else if(value.compare("Fungus") == 0) {
 				newOrganism->archtype = fungus;

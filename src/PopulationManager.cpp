@@ -22,7 +22,6 @@ PopulationManager::PopulationManager(Config* nsimConfig, Parameters* nsimParams,
 	tick = 0;
 	tickLimit = 0;
 	geneticsInitialized = false;
-	evolutionInitialized = false;
 
 	organismTemplates = templateOrganismTypes;
 
@@ -39,6 +38,17 @@ void PopulationManager::initializeGenetics() {
 	poolSize = simParams->populationCap;
 	originalDistribution = simParams->spawnRates;
 
+	//prime the grouping of species independently of genetic pool array
+	speciesGroups.clear();
+	speciesGroups.resize(organismTemplates.size());
+
+	//rebuild our indexes for species by symbols
+	templateIndexes.clear();
+
+	for(unsigned int i=0; i<organismTemplates.size(); i++) {
+		templateIndexes[organismTemplates.at(i)->symbol] = i;
+	}
+
 
 	//generate our initial organism data
 	geneticPool = new Organism[poolSize];
@@ -52,18 +62,11 @@ void PopulationManager::initializeGenetics() {
 	geneticsInitialized = true;
 
 	tickLimit = simParams->maxCycleCount;
-
-	evolutionInitialized = true;
 }
 
 void PopulationManager::run() {
 	if(!geneticsInitialized) {
 		cout<<"Genetics were not initialized!"<<endl;
-		return;
-	}
-
-	if(!evolutionInitialized) {
-		cout<<"Evolution was not initialized!"<<endl;
 		return;
 	}
 
@@ -74,35 +77,18 @@ void PopulationManager::run() {
 		tick = tick + 1;
 
 		if(tick % tickInfoFrequency == 0 || tick == 1) {
-			cout<<"Tick " << tick <<": [ "<<countPlants()<<"p "<<countHerbivores()<<"h "
-					<<countCarnivores()<<"c "<<countOmnivores()<<"o ] Alive at end of tick" << endl;
+			//TODO: replace with a better way to handle this and strip out these counts
+			cout<<"Tick " << tick <<": [ "<<countPlants()<<"p "<<countAnimals()<<"a "
+					<<countMushrooms()<<"f ] Alive at end of tick" << endl;
 		}
 	}
 	cout<<"Simulation has reached tick limit."<<endl;
 
 	cout<<"Ending simulation with "<<countPlants()<<" plants."<<endl;
-	cout<<"Ending simulation with "<<countHerbivores()<<" herbivores."<<endl;
-	cout<<"Ending simulation with "<<countCarnivores()<<" carnivores."<<endl;
-	cout<<"Ending simulation with "<<countOmnivores()<<" omnivores."<<endl;
+	cout<<"Ending simulation with "<<countAnimals()<<" animals."<<endl;
+	cout<<"Ending simulation with "<<countMushrooms()<<" fungi."<<endl;
 
 	end();
-
-	//run test on weighted random system
-	/*int testIndexCount = 100;
-	int counts[testIndexCount];
-	int testSize = 100000;
-	for(int i=0; i<testIndexCount; i++) {
-		counts[i] = 0;
-	}
-	for(int i=0; i<testSize; i++) {
-		counts[getWeightedIndex(testIndexCount)]++;
-	}
-	for(int i=0; i<testIndexCount / 10; i++) {
-		for(int j=0; j<10; j++) {
-			cout<<(counts[i*10 + j])<<"|";
-		}
-		cout<<endl;
-	}*/
 }
 
 void PopulationManager::end() {
@@ -114,217 +100,147 @@ void PopulationManager::end() {
 
 void PopulationManager::tickTurn() {
 	//clear prior cache data
-	plantLeastTough.clear();
-	creatureLeastTough.clear();
-	creatureLeastAgile.clear();
-	creatureLeastSmart.clear();
+	for(unsigned int i=0; i<organismTemplates.size(); i++) {
+		speciesGroups.at(i).clear();
+	}
 
 	creatureTurnOrder.clear();
 
-	//populate caches for plants, creatures
-	//plantLeastTough.push_back(X);
+	//populate caches for each species
 	for(unsigned int i=0; i < poolSize; i++) {
-		//if any are dead, we shouldn't add them
-		if(geneticPool[i].dead) {
-			continue;
-		}
-
-		//push separately for plants and creatures
-		if(geneticPool[i].archtype == plant) {
-			//plants get pushed to 1 vector
-			plantLeastTough.push_back(&geneticPool[i]);
-		}
-		else {
-			//creatures get pushed to 3 vectors
-			creatureLeastTough.push_back(&geneticPool[i]);
-			creatureLeastAgile.push_back(&geneticPool[i]);
-			creatureLeastSmart.push_back(&geneticPool[i]);
-			creatureTurnOrder.push_back(&geneticPool[i]);
-		}
+		Organism* self = &geneticPool[i];
+		speciesGroups.at(templateIndexes[self->symbol]).push_back(self);
 	}
 
-	//sort caches by stat
-	sort(plantLeastTough.begin(), plantLeastTough.end(), sortByTough);
-	sort(creatureLeastTough.begin(), creatureLeastTough.end(), sortByTough);
-	sort(creatureLeastAgile.begin(), creatureLeastAgile.end(), sortByAgile);
-	sort(creatureLeastSmart.begin(), creatureLeastSmart.end(), sortByIntelligence);
+	//build sorted caches by stat
+	vector<vector<Organism*> > leastTough(speciesGroups);
+	vector<vector<Organism*> > leastAgile(speciesGroups);
+	vector<vector<Organism*> > leastSmart(speciesGroups);
+	for(unsigned int i=0; i<speciesGroups.size(); i++) {
+		sort(leastTough.at(i).begin(), leastTough.at(i).end(), sortByTough);
+		sort(leastAgile.at(i).begin(), leastAgile.at(i).end(), sortByAgile);
+		sort(leastSmart.at(i).begin(), leastSmart.at(i).end(), sortByIntelligence);
+	}
 
 	//sort turn order by stat total
 	sort(creatureTurnOrder.begin(), creatureTurnOrder.end(), sortTurnOrder);
 
 	//cache size of each creature group
 	int plantCount = countPlants();
-	int herbivoreCount = countHerbivores();
-	int carnivoreCount = countCarnivores();
-	int omnivoreCount = countOmnivores();
+	int animalCount = countAnimals();
+	int fungiCount = countMushrooms();
 
 	//grant each creature an attack cycle
 	for(unsigned int i=0; i < poolSize; i++) {
 		ArchType creatureArchtype = geneticPool[i].archtype;
 		Organism* self = &geneticPool[i];
 
+		//for readability later
+		bool eatPlants = self->eatsPlants;
+		bool eatAnimals = self->eatsAnimals;
+		bool eatFungi = self->eatsFungus;
+		bool eatDead = self->eatsDead;
+		bool eatOwnKind = self->cannibal;
+
 		//the dead can't attack or eat...
 		if(self->dead) {
 			continue;
 		}
 
-		Organism* rolledTarget = NULL;
-		Organism* rolledTarget2 = NULL;
-		Organism* rolledTarget3 = NULL;
-		unsigned int rolledIndex = 0;
-		unsigned int rolledIndex1 = 0;
-		unsigned int rolledIndex2 = 0;
-		unsigned int rolledIndex3 = 0;
+		//build a vector of organisms we can consume, one-three picked at random from each species
+			//less if we're more versatile, more if we are a picky eater
+			//do not add duplicate units to vector!! treat it as failed rolls to not reroll
+		vector<Organism*> prey;
+		prey.clear();
 
-		vector<Organism*>* chosenGroup = NULL;
+		for(unsigned int i=0; i<organismTemplates.size(); i++) {
+			ArchType archtype = organismTemplates.at(i)->archtype;
 
-		//this tracks if we live or die
-		bool fed = false;
-		unsigned int pullable = 5;
-
-		switch(creatureArchtype) {
-		case plant:
-			//plants can't attack :) they live by outreproducing mammals
-			//to survive is to not be killed for them, we'll assume for now
-			self->eat();
-
-			break;
-		case herbivore:
-			//picks a random plant out of all plants, takes food from plant if possible
-			//ensure there's at least two plants first..
-			if(plantLeastTough.size() > 0) {
-				//attempt multiple hunts if we fail the first time
-				for(int j=0; j<5 && !fed && plantLeastTough.size() > 0; j++) {
-					rolledIndex = rand() % plantLeastTough.size();
-					rolledTarget = plantLeastTough.at(rolledIndex);
-
-					bool successfulHunting = self->stronger(rolledTarget, Toughness, true);
-
-					//target dies if pass
-					if(successfulHunting) {
-						self->eat(rolledTarget);
-						fed = self->food >= self->foodCap;
-					}
-				}
-
-			}
-			break;
-		case carnivore:
-			//grabs weakest 20(PARAMETER?) of each stat, excluding self and those stronger than us in that stat
-			pullable = 20;
-
-			rolledTarget = getWeightedWeakest(creatureLeastTough, pullable, rolledIndex1);
-			rolledTarget2 = getWeightedWeakest(creatureLeastAgile, pullable, rolledIndex2);
-			rolledTarget3 = getWeightedWeakest(creatureLeastSmart, pullable, rolledIndex3);
-
-			chosenGroup = &creatureLeastTough;
-
-			//lives or dies on killing target
-			if(creatureLeastTough.size() > 0) {
-				//picks randomly from these on whom to attack
-				rolledIndex = rand() % 3;
-
-				switch(rolledIndex) {
-				case 1:
-					rolledIndex1 = rolledIndex2;
-					rolledTarget = rolledTarget2;
-					chosenGroup = &creatureLeastAgile;
-					break;
-				case 2:
-					rolledIndex1 = rolledIndex3;
-					rolledTarget = rolledTarget3;
-					chosenGroup = &creatureLeastSmart;
-					break;
-				default:
-					break;
-				}
-
-				if(rolledTarget != NULL) {
-					bool successfulHunting1 = self->stronger(rolledTarget, Toughness, true);
-					bool successfulHunting2 = self->stronger(rolledTarget, Agility, true);
-					bool successfulHunting3 = self->stronger(rolledTarget, Intelligence, true);
-
-					bool pairA = successfulHunting1 && successfulHunting2;
-					bool pairB = successfulHunting1 && successfulHunting3;
-					bool pairC = successfulHunting3 && successfulHunting2;
-
-					//target dies if pass
-					if(pairA || pairB || pairC) {
-						self->eat(rolledTarget);
-						fed = self->food >= self->foodCap;
-					}
-				}
-
-			}
-			break;
-		case omnivore:
-			//attempts hunting weakest 5 creatures, and 3 plants
-			if(plantLeastTough.size() > 1) {
-				//attempt multiple rolls if we fail the first time
-				for(int j=0; j<3 && !fed; j++) {
-					rolledIndex = rand() % plantLeastTough.size();
-					rolledTarget = plantLeastTough.at(rolledIndex);
-
-					bool successfulHunting = self->stronger(rolledTarget, Toughness, true);
-
-					//target dies if pass
-					if(successfulHunting) {
-						fed = true;
-						rolledTarget->dead = true;
-					}
-				}
-
+			//skip logic if there aren't any alive left, saving some computation...
+			if(speciesGroups.at(i).size() <= 0) {
+				continue;
 			}
 
-			//gets to attempt both, plant first, animal if plant fails
-			pullable = 5;
-
-			rolledTarget = getWeightedWeakest(creatureLeastTough, pullable, rolledIndex1);
-			rolledTarget2 = getWeightedWeakest(creatureLeastAgile, pullable, rolledIndex2);
-			rolledTarget3 = getWeightedWeakest(creatureLeastSmart, pullable, rolledIndex3);
-
-			chosenGroup = &creatureLeastTough;
-
-			//lives or dies on killing target
-			if(creatureLeastTough.size() > 0 && !fed) {
-				//picks randomly from these on whom to attack
-				rolledIndex = rand() % 3;
-
-				switch(rolledIndex) {
-				case 1:
-					rolledIndex1 = rolledIndex2;
-					rolledTarget = rolledTarget2;
-					chosenGroup = &creatureLeastAgile;
-					break;
-				case 2:
-					rolledIndex1 = rolledIndex3;
-					rolledTarget = rolledTarget3;
-					chosenGroup = &creatureLeastSmart;
-					break;
-				default:
-					break;
+			//first do a cannibalism check!
+			if(!eatOwnKind) {
+				if(organismTemplates.at(i)->symbol.compare(self->symbol) == 0) {
+					//skip species if it's our own kind!
+					continue;
 				}
-
-				if(rolledTarget != NULL) {
-					bool successfulHunting1 = self->stronger(rolledTarget, Toughness, true);
-					bool successfulHunting2 = self->stronger(rolledTarget, Agility, true);
-					bool successfulHunting3 = self->stronger(rolledTarget, Intelligence, true);
-
-					bool pairA = successfulHunting1 && successfulHunting2;
-					bool pairB = successfulHunting1 && successfulHunting3;
-					bool pairC = successfulHunting3 && successfulHunting2;
-
-					//target dies if pass
-					if(pairA || pairB || pairC) {
-						self->eat(rolledTarget);
-						fed = self->food >= self->foodCap;
-					}
-				}
-
 			}
-			break;
+
+			//verify that we can eat them
+			if((archtype == plant && eatPlants)||(archtype == animal && eatAnimals)||(archtype == fungus && eatFungi)) {
+				//pick a prey to consume
+				//cap at weakest 100 to pick from for now
+				Organism* firstPick = getWeightedWeakest(speciesGroups.at(i), 100);
+
+				//get second pick only if we have at least 1 group we won't eat
+				Organism* secondPick = firstPick;
+				if(!eatPlants || !eatAnimals || !eatFungi) {
+					secondPick = getWeightedWeakest(speciesGroups.at(i), 100);
+				}
+
+				//get third pick only if we have at least 2 groups we won't eat
+				Organism* thirdPick = firstPick;
+				if((!eatPlants && !eatAnimals) || (!eatFungi && !eatAnimals) || (!eatPlants && !eatFungi)) {
+					thirdPick = getWeightedWeakest(speciesGroups.at(i), 100);
+				}
+
+				//add them all to our list
+				if(firstPick != NULL) {
+					prey.push_back(firstPick);
+				}
+				if(secondPick != firstPick) {
+					prey.push_back(secondPick);
+				}
+				if(thirdPick != firstPick) {
+					prey.push_back(thirdPick);
+				}
+			}
 		}
 
+		//let naturally produced food occur first
+		if(self->foodProductionRate > 0) {
+			self->eat();
+		}
+
+		//attempt to eat up to N prey, with 1 less for each failure to beat prey
+			//penalty is to emulate getting injured during the hunt, adding up to starvation if repeated
+		//stop after food cap is reached
+		int attemptCount = 7;//arbitrary vaue for now
+		for(unsigned int i=0; i<prey.size() && attemptCount > 0 && self->food < self->foodCap; i++) {
+			//abort if enemy size is more than twice our size, with no penalty to attempt count
+			if(prey.at(i)->getSize() > self->getSize()*2) {
+				continue;
+			}
+
+			//attempt to hunt the prey
+			//use toughness if target is a plant
+			//must win 2/3 rolls otherwise
+			bool successfulToughness = self->stronger(prey.at(i), Toughness, true);
+			bool successfulAgility = false;
+			bool successfulIntelligence = true;
+
+			if(prey.at(i)->archtype != fungus && prey.at(i)->archtype != plant) {
+				successfulAgility = self->stronger(prey.at(i), Agility, true);
+				successfulIntelligence = self->stronger(prey.at(i), Intelligence, true);
+			}
+
+			//consume only up to capacity for food
+			if((successfulToughness && successfulAgility) ||
+					(successfulAgility && successfulIntelligence) ||
+					(successfulToughness && successfulIntelligence)) {
+				self->eat(prey.at(i));
+			}
+
+			//if we've made it here, we've truly made an attempt to hunt our target
+			attemptCount--;
+		}
+
+
+		//if we fail to eat enough, and we can consume corpses, attempt to consume corpses randomly
+			//corpses have a third of their original stat total, to emulate failure to handle tougher meat
 
 		//kill any creature that can't pay the food tax that is life
 		for(unsigned int i=0; i < poolSize; i++) {
@@ -334,189 +250,75 @@ void PopulationManager::tickTurn() {
 
 			geneticPool[i].consumeFood();
 		}
-
-
-
-		//add a bonus death penalty depending on population size compared to total population
-		int popSize = plantCount;
-		switch(self->archtype) {
-		case herbivore:
-			popSize = herbivoreCount;
-			break;
-		case carnivore:
-			popSize = carnivoreCount;
-			break;
-		case omnivore:
-			popSize = omnivoreCount;
-			break;
-		default:
-			break;
-		}
-
-		//factors in for "hidden" factors that large populations create and helps mitigate any given population exploding
-			//things like algae blooms as a result of too much excrement in a river, for example
-		//(#/total #) * 0.4 chance of instantdeath
-		if(popSize * 0.1 > rand() % poolSize) {
-			//died to overpopulation results
-			self->dead = true;
-		}
 	}
 
+	//populate caches for each living species
 
-	//populate caches for still living plants, herbivore, omnivore, carnivore
-	vector<Organism*> livingPlants;
-	vector<Organism*> livingHerbivores;
-	vector<Organism*> livingCarnivores;
-	vector<Organism*> livingOmnivores;
-	vector<Organism*> liveCreatures;
+	//cross breed them with one another to fill up remaining slots
+	//mutations resulting can exceed original max/minimum parameters of the simulation
 
-	//store vector of location for "dead" locations
+	vector<vector<Organism*> > livingSpecies;
+	livingSpecies.resize(templateIndexes.size());
+
 	vector<Organism*> deadCreatures;
 	deadCreatures.clear();
 
-	for(unsigned int i=0; i < poolSize; i++) {
-		ArchType creatureArchtype = geneticPool[i].archtype;
+	for(unsigned int i=0; i<poolSize; i++) {
 		Organism* self = &geneticPool[i];
-
-		if(self->dead == true) {
+		if(!self->dead) {
+			livingSpecies.at(templateIndexes[self->symbol]).push_back(self);
+		} else {
 			deadCreatures.push_back(self);
-		} else {
-			liveCreatures.push_back(self);
-			switch(creatureArchtype) {
-			case plant:
-				livingPlants.push_back(self);
-				break;
-			case herbivore:
-				livingHerbivores.push_back(self);
-				break;
-			case carnivore:
-				livingCarnivores.push_back(self);
-				break;
-			case omnivore:
-				livingOmnivores.push_back(self);
-				break;
+		}
+	}
+
+	//% of dead pool size to be added each tick to fill in gaps
+	float percentNewRandom = this->simParams->randomPerBreedCycle;
+
+	//up until this portion of the dead pool is reached, generate new units
+
+
+	//this algorithm assumes binary reproduction without specific sexes
+	//under it, as long as ample resources are provided, a successful parent can reproduce many times per cycle
+	//iterate across all living things
+	for(unsigned int i=0; i<livingSpecies.size(); i++) {
+		for(unsigned int j=0; j<livingSpecies.at(i).size() && deadCreatures.size() > 0; j++) {
+			Organism* self = livingSpecies.at(i).at(j);
+			int breedAttemptsLeft = 5;//TODO make a parameter
+
+			//can only breed if they have at least THRESHOLD excess food to survive
+			if(!self->canBreed()) {
+				continue;
 			}
-		}
-	}
 
-	//at intervals, report how many of each type survived
-	if(tick % tickInfoFrequency == 0) {
-		int survivorCount[] = {0,0,0,0};
+			while(breedAttemptsLeft > 0 && deadCreatures.size() > 0) {
+				//give them a chance to breed with a random from the same pool
+					//reroll breeding target 5 times
+				Organism* partner = NULL;
 
-		for(unsigned int i=0; i<liveCreatures.size(); i++) {
-			survivorCount[liveCreatures.at(i)->archtype]++;
-		}
+				partner = livingSpecies.at(i).at(rand() % livingSpecies.at(i).size());
 
-		cout<<"Survivors: { "<<survivorCount[plant]<<"p "<<survivorCount[herbivore]<<"h "
-				<<survivorCount[carnivore]<<"c "<<survivorCount[omnivore]<<"o }"<<endl;
-	}
-
-	float percentNewRandom = 0.1;
-
-	//safety check for no living things, we had a genocide on our hands!
-	if(liveCreatures.size() <= 0) {
-		if(tick % tickInfoFrequency == 0) {
-			//cout<<"Everyone died!"<<endl;
-		}
-		percentNewRandom = 1;
-	}
-
-	//breed based on distribution with random from each pool, plus minor mutation shifts
-
-	//minimum of 1% chance for an archetype to surface randomly to prevent full extinction of them
-		//handled by scaling 100% to 96%
-	const int baseRate = 1;
-	int scaledSize = 100 - baseRate*4;
-
-	int plantRate = baseRate;
-	int herbivoreRate = baseRate;
-	int carnivoreRate = baseRate;
-	int omnivoreRate = baseRate;
-
-	plantCount = livingPlants.size();
-	herbivoreCount = livingHerbivores.size();
-	carnivoreCount = livingCarnivores.size();
-	omnivoreCount = livingOmnivores.size();
-	int total = plantCount + herbivoreCount + carnivoreCount + omnivoreCount;
-
-	//in case we have no survivors
-	if(total <= 0) {
-		total = 1;
-	}
-
-	plantRate += (plantCount / total) * scaledSize;
-	herbivoreRate += (herbivoreCount / total) * scaledSize;
-	carnivoreRate += (carnivoreCount / total) * scaledSize;
-	omnivoreRate += (omnivoreCount / total) * scaledSize;
-
-	total = plantRate + herbivoreRate + carnivoreRate + omnivoreRate;
-
-	for(unsigned int i=0; i<deadCreatures.size(); i++) {
-		Organism* self = deadCreatures.at(i);
-
-		//chance to skip over corpse, to allow population totals to fluctuate a bit
-		if(rand() % 100 < chanceToFailToBreed) {
-			continue;
-		}
-
-		//have a portion be random new species
-		if(i < deadCreatures.size() * percentNewRandom) {
-			ArchType archtype = plant;
-			int roll = rand() % total;
-			if(roll <= plantRate) {
-				archtype = plant;
-			} else {
-				roll -= plantRate;
-				if(roll <= herbivoreRate) {
-					archtype = herbivore;
-				} else {
-					roll -= herbivoreRate;
-					if(roll <= carnivoreRate) {
-						archtype = carnivore;
-					} else {
-						roll -= carnivoreRate;
-						if(roll <= omnivoreRate) {
-							archtype = omnivore;
-						} else {
-							cout<<"CRITICAL ERROR in random breeding cycle!"<<endl;
-						}
-					}
+				if(partner == self || !partner->canBreed()) {
+					//this can not be themselves!
+					breedAttemptsLeft--;
+					continue;
 				}
-			}
 
-			self->initializeClass(archtype);
-			self->initializeRandom(70, 30);
-		} else {
-			//roll a 100% random creature
-			Organism* parent1 = liveCreatures.at(rand() % liveCreatures.size());
+				//take a minimum amount of food from each
+					//pass it onto the baby in full
+				float babyFood = self->takeBabyFood() + partner->takeBabyFood();
 
-			//roll a creature in a compatible group to breed with first creature
-			Organism* parent2 = NULL;
-			switch(parent1->archtype) {
-			case plant:
-				parent2 = livingPlants.at(rand() % livingPlants.size());
-				break;
-			case herbivore:
-				parent2 = livingHerbivores.at(rand() % livingHerbivores.size());
-				break;
-			case carnivore:
-				parent2 = livingCarnivores.at(rand() % livingCarnivores.size());
-				break;
-			case omnivore:
-				parent2 = livingOmnivores.at(rand() % livingOmnivores.size());
-				break;
-			}
-
-			if(parent2 != NULL) {
-				//update corpses' data to be a mix of parents with mutation
-				self->beBorn(parent1, parent2);
+				//make the baby
+				//baby takes a range of values between the parents two values
+					//mutation can +- the result independently of this
+				Organism* newBaby = deadCreatures.at(0);
+				deadCreatures.erase(deadCreatures.begin());
+				newBaby->beBorn(self, partner);
+				newBaby->food = babyFood;
 			}
 		}
-
 	}
 }
-
-
 
 int PopulationManager::countPlants() {
 	int count = 0;
@@ -530,47 +332,47 @@ int PopulationManager::countPlants() {
 	return count;
 }
 
-int PopulationManager::countHerbivores() {
-	int count = 0;
-
-	for(unsigned int i=0; i<poolSize; i++) {
-		if(geneticPool[i].archtype == herbivore && !geneticPool[i].dead) {
-			count++;
-		}
-	}
-
-	return count;
-}
-
-int PopulationManager::countCarnivores() {
-	int count = 0;
-
-	for(unsigned int i=0; i<poolSize; i++) {
-		if(geneticPool[i].archtype == carnivore && !geneticPool[i].dead) {
-			count++;
-		}
-	}
-
-	return count;
-}
-
-int PopulationManager::countOmnivores() {
-	int count = 0;
-
-	for(unsigned int i=0; i<poolSize; i++) {
-		if(geneticPool[i].archtype == omnivore && !geneticPool[i].dead) {
-			count++;
-		}
-	}
-
-	return count;
-}
-
 int PopulationManager::countAnimals() {
 	int count = 0;
 
 	for(unsigned int i=0; i<poolSize; i++) {
-		if(geneticPool[i].archtype != plant && !geneticPool[i].dead) {
+		if(geneticPool[i].archtype == animal && !geneticPool[i].dead) {
+			count++;
+		}
+	}
+
+	return count;
+}
+
+int PopulationManager::countMushrooms() {
+	int count = 0;
+
+	for(unsigned int i=0; i<poolSize; i++) {
+		if(geneticPool[i].archtype == fungus && !geneticPool[i].dead) {
+			count++;
+		}
+	}
+
+	return count;
+}
+
+int PopulationManager::countSpecies(string speciesName) {
+	int count = 0;
+
+	for(unsigned int i=0; i<poolSize; i++) {
+		if(geneticPool[i].name.compare(speciesName)==0 && !geneticPool[i].dead) {
+			count++;
+		}
+	}
+
+	return count;
+}
+
+int PopulationManager::countNonSpecies(string speciesName) {
+	int count = 0;
+
+	for(unsigned int i=0; i<poolSize; i++) {
+		if(geneticPool[i].name.compare(speciesName)!=0 && !geneticPool[i].dead) {
 			count++;
 		}
 	}
@@ -579,20 +381,20 @@ int PopulationManager::countAnimals() {
 }
 
 bool PopulationManager::sortByTough(Organism* i, Organism* j) {
-	return j->stronger(i, Toughness, false);
+	return (j->stronger(i, Toughness, false)||(j->dead && !i->dead));
 }
 
 bool PopulationManager::sortByAgile(Organism* i, Organism* j) {
-	return j->stronger(i, Agility, false);
+	return (j->stronger(i, Agility, false)||(j->dead && !i->dead));
 }
 
 bool PopulationManager::sortByIntelligence(Organism* i, Organism* j) {
-	return j->stronger(i, Intelligence, false);
+	return (j->stronger(i, Intelligence, false)||(j->dead && !i->dead));
 }
 
 bool PopulationManager::sortTurnOrder(Organism* i, Organism* j) {
-	float total_i = i->getStatTotal();
-	float total_j = j->getStatTotal();
+	float total_i = i->getSize();
+	float total_j = j->getSize();
 	return total_i < total_j;
 }
 
@@ -611,12 +413,12 @@ int PopulationManager::getWeightedIndex(unsigned int maxIndex, unsigned int minI
 	return maxIndex;
 }
 
-Organism* PopulationManager::getWeightedWeakest(vector<Organism*> &possibleTargets, unsigned int maxWeakestPullable, unsigned int &index) {
+Organism* PopulationManager::getWeightedWeakest(vector<Organism*> &possibleTargets, unsigned int maxWeakestPullable) {
 	if(maxWeakestPullable > possibleTargets.size()) {
 		maxWeakestPullable = possibleTargets.size();
 	}
 
-	index = getWeightedIndex(maxWeakestPullable);
+	unsigned int index = getWeightedIndex(maxWeakestPullable);
 
 	return possibleTargets.at(index);
 }

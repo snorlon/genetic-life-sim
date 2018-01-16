@@ -11,34 +11,8 @@
 #include <string>
 #include <stdlib.h>
 
-enum ArchType { plant, herbivore, omnivore, carnivore, animalia, fungus };
+enum ArchType { plant, animal, fungus };
 enum Stat { Toughness, Agility, Intelligence };
-
-//plant variables
-//per stat point
-const float baseProductionRate = 2.0;
-//every stat point below this will grant us more food production
-const int productionRateComparisonUpperbound = 100;
-//rate that food slows, every X of this will half production gains
-const int plantFoodGainDecay = 1000;
-
-//herbivore variables
-//amount of food gained % from eating
-const float herbivoreConsumptionGain = 0.5;
-//rate that food slows, every X of this will half production gains
-const int herbivoreFoodGainDecay = 600;
-
-//carnivore variables
-//amount of food gained % from eating
-const float carnivoreConsumptionGain = 0.5;
-//rate that food slows, every X of this will half production gains
-const int carnivoreFoodGainDecay = 500;
-
-//omnivore variables
-//amount of food gained % from eating
-const float omnivoreConsumptionGain = 0.5;
-//rate that food slows, every X of this will half production gains
-const int omnivoreFoodGainDecay = 600;
 
 class Organism {
 public:
@@ -66,9 +40,12 @@ public:
 	float getValue(Stat stat, bool rollCheck = true);
 	bool stronger(Organism* target, Stat stat, bool rollCheck = true);
 
+	float getBabyFood();//gets the value of how much baby food we have set aside of our own
+	float takeBabyFood();//gets the allocated baby food amount
+	bool canBreed();//checks if we have enough food to spare
 	void beBorn(Organism* parent1, Organism* parent2);
 
-	float getStatTotal();
+	int getSize();
 
 	int getToughness();
 	int getAgility();
@@ -77,7 +54,7 @@ public:
 	void recalculateFood();
 
 	std::string name;
-	std::string symbol;
+	std::string symbol;//MUST be unique! We're using it to group organisms
 	ArchType archtype;
 
 	bool eatsPlants;
@@ -111,7 +88,7 @@ public:
 	//constants for type (for now)
 	int mutationRate;
 
-	double breedThreshold;
+	double breedThreshold;//% of food consumption to reserve for reproduction
 
 	double foodStatPenalty;//bonus food consumption multiplier for stat total
 	double foodStatVariancePenalty;//bonus food consumption multiplier for variance total
