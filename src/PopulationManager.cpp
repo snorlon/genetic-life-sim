@@ -241,6 +241,7 @@ void PopulationManager::tickTurn() {
 
 		//if we fail to eat enough, and we can consume corpses, attempt to consume corpses randomly
 			//corpses have a third of their original stat total, to emulate failure to handle tougher meat
+		//TODO
 
 		//kill any creature that can't pay the food tax that is life
 		for(unsigned int i=0; i < poolSize; i++) {
@@ -276,7 +277,14 @@ void PopulationManager::tickTurn() {
 	float percentNewRandom = this->simParams->randomPerBreedCycle;
 
 	//up until this portion of the dead pool is reached, generate new units
+	for(unsigned int i=0; i<deadCreatures.size()*percentNewRandom; i++) {
+		Organism* rolledTemplate = pickRandomTemplate();
 
+		deadCreatures.at(0)->instantiate(rolledTemplate);
+
+		//make sure to remove the now-living from the dead list to prevent them being replaced
+		deadCreatures.erase(deadCreatures.begin());
+	}
 
 	//this algorithm assumes binary reproduction without specific sexes
 	//under it, as long as ample resources are provided, a successful parent can reproduce many times per cycle
