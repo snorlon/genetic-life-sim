@@ -132,7 +132,6 @@ void PopulationManager::tickTurn() {
 
 	//grant each creature an attack cycle
 	for(unsigned int i=0; i < poolSize; i++) {
-		ArchType creatureArchtype = geneticPool[i].archtype;
 		Organism* self = &geneticPool[i];
 
 		//for readability later
@@ -243,14 +242,15 @@ void PopulationManager::tickTurn() {
 			//corpses have a third of their original stat total, to emulate failure to handle tougher meat
 		//TODO
 
-		//kill any creature that can't pay the food tax that is life
-		for(unsigned int i=0; i < poolSize; i++) {
-			if(geneticPool[i].dead) {
-				continue;
-			}
+	}
 
-			geneticPool[i].consumeFood();
+	//kill any creature that can't pay the food tax that is life
+	for(unsigned int i=0; i < poolSize; i++) {
+		if(geneticPool[i].dead) {
+			continue;
 		}
+
+		geneticPool[i].consumeFood();
 	}
 
 	//populate caches for each living species
@@ -273,6 +273,13 @@ void PopulationManager::tickTurn() {
 		}
 	}
 
+	//survival numbers
+	if(tick % tickInfoFrequency == 0 || tick == 1) {
+		//TODO: replace with a better way to handle this and strip out these counts
+		cout<<"[ "<<countPlants()<<"p "<<countAnimals()<<"a "
+				<<countMushrooms()<<"f ] Survived" << endl;
+	}
+
 	//% of dead pool size to be added each tick to fill in gaps
 	float percentNewRandom = this->simParams->randomPerBreedCycle;
 
@@ -285,6 +292,9 @@ void PopulationManager::tickTurn() {
 		//make sure to remove the now-living from the dead list to prevent them being replaced
 		deadCreatures.erase(deadCreatures.begin());
 	}
+
+	//output data
+	int babiesMade = 0;
 
 	//this algorithm assumes binary reproduction without specific sexes
 	//under it, as long as ample resources are provided, a successful parent can reproduce many times per cycle
@@ -312,19 +322,19 @@ void PopulationManager::tickTurn() {
 					continue;
 				}
 
-				//take a minimum amount of food from each
-					//pass it onto the baby in full
-				float babyFood = self->takeBabyFood() + partner->takeBabyFood();
-
 				//make the baby
 				//baby takes a range of values between the parents two values
 					//mutation can +- the result independently of this
 				Organism* newBaby = deadCreatures.at(0);
 				deadCreatures.erase(deadCreatures.begin());
 				newBaby->beBorn(self, partner);
-				newBaby->food = babyFood;
+				babiesMade++;
 			}
 		}
+	}
+
+	if(tick % tickInfoFrequency == 0 || tick == 1) {
+		//cout<<"Made "<<babiesMade<<" children this turn."<<endl;
 	}
 }
 
@@ -422,8 +432,12 @@ int PopulationManager::getWeightedIndex(unsigned int maxIndex, unsigned int minI
 }
 
 Organism* PopulationManager::getWeightedWeakest(vector<Organism*> &possibleTargets, unsigned int maxWeakestPullable) {
-	if(maxWeakestPullable > possibleTargets.size()) {
-		maxWeakestPullable = possibleTargets.size();
+	if(possibleTargets.size() <= 0) {
+		return NULL;
+	}
+
+	if(maxWeakestPullable > possibleTargets.size()-1) {
+		maxWeakestPullable = possibleTargets.size()-1;
 	}
 
 	unsigned int index = getWeightedIndex(maxWeakestPullable);

@@ -5,6 +5,8 @@
  *      Author: root
  */
 
+#include <iostream>
+
 #include "Organism.h"
 #include <stdlib.h>
 
@@ -119,8 +121,13 @@ void Organism::tickTurn() {
 void Organism::eat(Organism* prey) {
 	//can only consume up to 40% of food from target, remainder on target is halved
 	if(prey != NULL) {
+		if(prey->food <= 0) {
+			//abort if nothing to eat!
+			return;
+		}
+
 		//determine how much we're taking from target, limited by our stomach size
-		int foodConsumed = prey->food * 0.4;
+		int foodConsumed = prey->food * 0.7;
 		int foodAvailableSpace = foodCap - food;
 		if(foodAvailableSpace < 0) {
 			foodAvailableSpace = 0;
@@ -144,8 +151,39 @@ void Organism::eat(Organism* prey) {
 }
 
 void Organism::consumeFood() {
-	food -= foodConsumption;
+	//scaled from 70 to 100% of foodconsumption, we have a chance to die
+	//if below 70%, it's instant death
+	float foodThreshold = foodConsumption * 0.5;
+	float bonusChance = foodConsumption - foodThreshold;
+
+	//std::cout<<food<<"|"<<foodConsumption<<std::endl;
+
+	//lets play russian roulette for things like cancer or ebola
+	if(rand() % 100 < suddenDeathChance) {
+		dead = true;
+		return;
+	}
+
+	//just in case...
+	if(bonusChance <= 0) {
+		bonusChance = 1;
+	}
+
+	//std::cout<<food<<std::endl;
+	food -= foodThreshold;
 	if(food < 0) {
+		dead = true;
+	}
+
+	if(food > bonusChance) {
+		food -= bonusChance;
+
+		return;
+	}
+
+	//here's the chance-to-die roll
+	//we can't have a random-death chance here (for now for easier stablization)
+	if(rand() % 100 > (food/bonusChance) * 100) {
 		dead = true;
 	}
 }
@@ -153,6 +191,7 @@ void Organism::consumeFood() {
 void Organism::initialize(int ntoughness, int nagility, int nintelligence,
 		int ntoughnessVariance, int nagilityVariance, int nintelligenceVariance) {
 	dead = false;
+	food = 0;
 	toughness = ntoughness;
 	agility = nagility;
 	intelligence = nintelligence;
@@ -296,6 +335,10 @@ void Organism::beBorn(Organism* parent1, Organism* parent2) {
 	suddenDeathChance = parent1->suddenDeathChance;
 
 	mutationRate = parent1->mutationRate;
+
+	//take a minimum amount of food from each
+		//pass it onto the baby in full
+	food = parent1->takeBabyFood() + parent2->takeBabyFood();;
 }
 
 int Organism::randomStatInRange(int val1, int val2) {
@@ -349,10 +392,10 @@ int Organism::getIntelligence() {
 void Organism::recalculateFood() {
 
 	//base food consumption on stats
-	foodConsumption = (agility + intelligence + toughness)*0.03 +
-			(agilityVariance + intelligenceVariance + toughnessVariance)*0.05;
+	foodConsumption = (agility + intelligence + toughness)*foodStatPenalty +
+			(agilityVariance + intelligenceVariance + toughnessVariance)*foodStatVariancePenalty;
 
 
 	//base foodcap on consumption
-	foodCap = foodConsumption*2.1;
+	foodCap = foodConsumption*foodCapMultiplier;
 }
