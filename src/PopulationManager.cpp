@@ -244,6 +244,13 @@ void PopulationManager::tickTurn() {
 
 	}
 
+
+	//cull off organisms based on their original share of the current "space" we have at start of turn
+	//50% death rate at 100% share, 0% at 0% share
+	float plantPercent = plantCount / poolSize;
+	float animalPercent = animalCount / poolSize;
+	float fungiPercent = fungiCount / poolSize;
+
 	//kill any creature that can't pay the food tax that is life
 	for(unsigned int i=0; i < poolSize; i++) {
 		if(geneticPool[i].dead) {
@@ -251,6 +258,21 @@ void PopulationManager::tickTurn() {
 		}
 
 		geneticPool[i].consumeFood();
+
+		//cull "space" strained species here
+		if(!geneticPool[i].dead) {
+			float usedPercent = plantPercent;
+
+			if(geneticPool[i].archtype == animal) {
+				usedPercent = animalPercent;
+			} else if(geneticPool[i].archtype == fungus) {
+				usedPercent = fungiPercent;
+			}
+
+			if(rand() % 100 < usedPercent * 90) {
+				geneticPool[i].dead = true;
+			}
+		}
 	}
 
 	//populate caches for each living species
@@ -258,8 +280,11 @@ void PopulationManager::tickTurn() {
 	//cross breed them with one another to fill up remaining slots
 	//mutations resulting can exceed original max/minimum parameters of the simulation
 
+	//stores living creatures separated by species
 	vector<vector<Organism*> > livingSpecies;
 	livingSpecies.resize(templateIndexes.size());
+	//a separate cache without species separation to better randomize breeding in space limitations
+	vector<Organism*> breedingLivingSpecies;
 
 	vector<Organism*> deadCreatures;
 	deadCreatures.clear();
@@ -268,10 +293,14 @@ void PopulationManager::tickTurn() {
 		Organism* self = &geneticPool[i];
 		if(!self->dead) {
 			livingSpecies.at(templateIndexes[self->symbol]).push_back(self);
+			breedingLivingSpecies.push_back(self);
 		} else {
 			deadCreatures.push_back(self);
 		}
 	}
+
+	//shuffle breeding pool
+	random_shuffle ( breedingLivingSpecies.begin(), breedingLivingSpecies.end(), seededRandom);
 
 	//survival numbers
 	if(tick % tickInfoFrequency == 0 || tick == 1) {
@@ -299,37 +328,49 @@ void PopulationManager::tickTurn() {
 	//this algorithm assumes binary reproduction without specific sexes
 	//under it, as long as ample resources are provided, a successful parent can reproduce many times per cycle
 	//iterate across all living things
-	for(unsigned int i=0; i<livingSpecies.size(); i++) {
-		for(unsigned int j=0; j<livingSpecies.at(i).size() && deadCreatures.size() > 0; j++) {
-			Organism* self = livingSpecies.at(i).at(j);
-			int breedAttemptsLeft = 5;//TODO make a parameter
+	for(unsigned int i=0; i<breedingLivingSpecies.size(); i++) {
+		Organism* self = breedingLivingSpecies.at(i);
+		int speciesID = -1;
 
-			//can only breed if they have at least THRESHOLD excess food to survive
-			if(!self->canBreed()) {
+		int breedAttemptsLeft = 5;//TODO make a parameter
+
+		//can only breed if they have at least THRESHOLD excess food to survive
+		if(!self->canBreed()) {
+			continue;
+		}
+
+		for(unsigned int k=0; k<organismTemplates.size(); k++) {
+			if(organismTemplates.at(k)->symbol.compare(self->symbol) == 0) {
+				speciesID = k;
+			}
+		}
+
+		if(speciesID < 0) {
+			cout<<"Unknown species entered pool!"<<endl;
+			continue;
+		}
+
+
+		while(breedAttemptsLeft > 0 && deadCreatures.size() > 0) {
+			//give them a chance to breed with a random from the same pool
+				//reroll breeding target 5 times
+			Organism* partner = NULL;
+
+			partner = livingSpecies.at(speciesID).at(rand() % livingSpecies.at(speciesID).size());
+
+			if(partner == self || !partner->canBreed()) {
+				//this can not be themselves!
+				breedAttemptsLeft--;
 				continue;
 			}
 
-			while(breedAttemptsLeft > 0 && deadCreatures.size() > 0) {
-				//give them a chance to breed with a random from the same pool
-					//reroll breeding target 5 times
-				Organism* partner = NULL;
-
-				partner = livingSpecies.at(i).at(rand() % livingSpecies.at(i).size());
-
-				if(partner == self || !partner->canBreed()) {
-					//this can not be themselves!
-					breedAttemptsLeft--;
-					continue;
-				}
-
-				//make the baby
-				//baby takes a range of values between the parents two values
-					//mutation can +- the result independently of this
-				Organism* newBaby = deadCreatures.at(0);
-				deadCreatures.erase(deadCreatures.begin());
-				newBaby->beBorn(self, partner);
-				babiesMade++;
-			}
+			//make the baby
+			//baby takes a range of values between the parents two values
+				//mutation can +- the result independently of this
+			Organism* newBaby = deadCreatures.at(0);
+			deadCreatures.erase(deadCreatures.begin());
+			newBaby->beBorn(self, partner);
+			babiesMade++;
 		}
 	}
 

@@ -88,6 +88,8 @@ private:
 	bool geneticsInitialized;
 
 	int cachedTotalProbability;
+
+	static int seededRandom (int i) { return std::rand()%i;}
 };
 
 #endif /* POPULATIONMANAGER_H_ */
