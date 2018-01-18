@@ -16,22 +16,20 @@
 
 #include <algorithm>
 #include <vector>
+#include <map>
+#include "support/Config.h"
+#include "support/Parameters.h"
 
-const int tickInfoFrequency = 10;
+const int tickInfoFrequency = 5;
+const int chanceToFailToBreed = 50;//%, if failure, corpse from prior cycle remains
+	//this adds an element of corpses to the food chain and population density
 
 class PopulationManager {
 public:
-	PopulationManager(int seed = time(NULL));
+	PopulationManager(Config* simConfig, Parameters* simParams, vector<Organism*> &templateOrganismTypes, int seed = time(NULL));
 	virtual ~PopulationManager();
 
-	//Mutation rate is 0.00-1.00 percent variation added per iteration per gene
-	//Omnivores fill out the remaining percent
-	//Randoms will not eat into percent used by original organisms, ex: 0.3 random = 30% of total is random, other 70% divides for original
-	void initializeGenetics(int organismsUsed, double mutationRate,
-			float percentPlant, float percentHerbivore, float percentCarnivore,
-			float percentRandom = 0.0, bool weightedBreeding = true);
-
-	void initializeEvolution(int tickLimit);
+	void initializeGenetics();
 
 	void run();
 
@@ -43,35 +41,41 @@ public:
 	void reproduce();
 
 	int countPlants();
-	int countHerbivores();
-	int countCarnivores();
-	int countOmnivores();
 	int countAnimals();
+	int countMushrooms();
+	int countSpecies(string speciesName);
+	int countNonSpecies(string speciesName);
 
-	//Function will take in a count of 1 to MAX_WEIGHTS and return an index in that range -1
-	int getWeightedIndex(unsigned int possibleCount);
+	//Function will take a maximum range and flip coins on each index to decide if we "take" it, thus leading to exponentially less chance on each higher index
+	int getWeightedIndex(unsigned int maxIndex, unsigned int minIndex = 0);
 
-	Organism* getWeightedWeakest(vector<Organism*> &possibleTargets, unsigned int maxWeakestPullable, unsigned int &index);
+	Organism* getWeightedWeakest(vector<Organism*> &possibleTargets, unsigned int maxWeakestPullable = 999999);
 
+	Organism* pickRandomTemplate();
+
+	//dead end up at back of the line in these sorts, with the weakest living in the front
 	static bool sortByTough(Organism* i, Organism* j);
 	static bool sortByAgile(Organism* i, Organism* j);
 	static bool sortByIntelligence(Organism* i, Organism* j);
-	static bool sortTurnOrder(Organism* i, Organism* j);
 
-	static const unsigned int MAX_WEIGHTS = 100;
+	//sorted by "size"
+	static bool sortTurnOrder(Organism* i, Organism* j);
 
 private:
 	Organism* geneticPool;
 
-	unsigned int weightedTotal [MAX_WEIGHTS];
+	vector<Organism*> organismTemplates;
+	std::map<string, int> templateIndexes;
 
-	//Plants only have a toughness factor, as they aren't agile or smart in any way
-	//This will lead to herbivores having a toughness-based approach to evolution, which is natural in real life
-	vector<Organism*> plantLeastTough;
+	Config* simConfig;
+	Parameters* simParams;
 
-	vector<Organism*> creatureLeastTough;
-	vector<Organism*> creatureLeastAgile;
-	vector<Organism*> creatureLeastSmart;
+	//stores a list of each creature group separately from the genetic pool
+	//get list by index of species in template list
+	//sorted by food amount when breeding cycle comes to pass
+	//sorted by their weakest living for attack cycles, with their dead at the back
+	//during attack cycles, their weakest will be copied to another vector of prey to hunt
+	vector<vector<Organism*> > speciesGroups;
 
 	vector<Organism*> creatureTurnOrder;
 
@@ -79,14 +83,13 @@ private:
 	int tickLimit;
 
 	unsigned int poolSize;
-	float percentRandom;
-	float mutationRate;
-	float originalDistribution[4];
-	int originalCount[4];
-	bool weightedBreeding;
+	vector<float> originalDistribution;
 
 	bool geneticsInitialized;
-	bool evolutionInitialized;
+
+	int cachedTotalProbability;
+
+	static int seededRandom (int i) { return std::rand()%i;}
 };
 
 #endif /* POPULATIONMANAGER_H_ */

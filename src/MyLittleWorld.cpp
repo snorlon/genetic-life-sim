@@ -10,18 +10,33 @@
 using namespace std;
 
 #include "PopulationManager.h"
+#include "support/Config.h"
+#include "support/Parameters.h"
+#include "support/FileReader.h"
 
 #include <stdio.h>
 
 
 
 int main() {
-	PopulationManager popManager;
+	Config simConfig;
+	Parameters simParams;
+	FileReader simFileReader;
+	vector<Organism*> templateOrganismTypes;
 
-	popManager.initializeGenetics(50000, 0.1, 0.5, 0.3, 0.1, 0.1);
-	popManager.initializeEvolution(10000);
+	simFileReader.readParameters(&simParams);
+
+	//Creates a vector of organism designs from the file
+	templateOrganismTypes = simFileReader.readOrganisms();
+	if(templateOrganismTypes.size() <= 0) {
+		cout<<"Critical error! No organism templates loaded! Aborting execution."<<endl;
+		return -1;
+	}
+
+	PopulationManager popManager(&simConfig, &simParams, templateOrganismTypes);
+
+	popManager.initializeGenetics();
 	popManager.run();
 
-	//cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!
 	return 0;
 }
