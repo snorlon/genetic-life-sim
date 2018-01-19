@@ -12,6 +12,7 @@ using namespace std;
 #include "PopulationManager.h"
 #include "support/Config.h"
 #include "support/Parameters.h"
+#include "support/Statistics.h"
 #include "support/FileReader.h"
 
 #include <stdio.h>
@@ -22,6 +23,7 @@ int main() {
 	Config simConfig;
 	Parameters simParams;
 	FileReader simFileReader;
+	Statistics simStats;
 	vector<Organism*> templateOrganismTypes;
 
 	simFileReader.readParameters(&simParams);
@@ -33,7 +35,7 @@ int main() {
 		return -1;
 	}
 
-	PopulationManager popManager(&simConfig, &simParams, templateOrganismTypes);
+	PopulationManager popManager(&simConfig, &simParams, &simStats, templateOrganismTypes);
 
 	popManager.initializeGenetics();
 	popManager.run();

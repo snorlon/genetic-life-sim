@@ -2,7 +2,7 @@
  * PopulationManager.cpp
  *
  *  Created on: Nov 27, 2017
- *      Author: root
+ *      Author: Erin Brown
  */
 
 #include <iostream>
@@ -10,11 +10,12 @@ using namespace std;
 
 #include "PopulationManager.h"
 
-PopulationManager::PopulationManager(Config* nsimConfig, Parameters* nsimParams, vector<Organism*> &templateOrganismTypes, int seed) {
+PopulationManager::PopulationManager(Config* nsimConfig, Parameters* nsimParams, Statistics* nsimStats, vector<Organism*> &templateOrganismTypes, int seed) {
 	srand (seed);
 
 	simConfig = nsimConfig;
 	simParams = nsimParams;
+	simStats = nsimStats;
 
 	poolSize = 5;
 

@@ -19,6 +19,7 @@
 #include <map>
 #include "support/Config.h"
 #include "support/Parameters.h"
+#include "support/Statistics.h"
 
 const int tickInfoFrequency = 5;
 const int chanceToFailToBreed = 50;//%, if failure, corpse from prior cycle remains
@@ -26,7 +27,7 @@ const int chanceToFailToBreed = 50;//%, if failure, corpse from prior cycle rema
 
 class PopulationManager {
 public:
-	PopulationManager(Config* simConfig, Parameters* simParams, vector<Organism*> &templateOrganismTypes, int seed = time(NULL));
+	PopulationManager(Config* simConfig, Parameters* simParams, Statistics* simStats, vector<Organism*> &templateOrganismTypes, int seed = time(NULL));
 	virtual ~PopulationManager();
 
 	void initializeGenetics();
@@ -69,6 +70,7 @@ private:
 
 	Config* simConfig;
 	Parameters* simParams;
+	Statistics* simStats;
 
 	//stores a list of each creature group separately from the genetic pool
 	//get list by index of species in template list
