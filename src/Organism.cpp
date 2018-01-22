@@ -150,7 +150,7 @@ void Organism::eat(Organism* prey) {
 	}
 }
 
-void Organism::consumeFood() {
+void Organism::consumeFood(Statistics* simStats) {
 	//scaled from 70 to 100% of foodconsumption, we have a chance to die
 	//if below 70%, it's instant death
 	float foodThreshold = foodConsumption * 0.5;
@@ -161,6 +161,7 @@ void Organism::consumeFood() {
 	//lets play russian roulette for things like cancer or ebola
 	if(rand() % 100 < suddenDeathChance) {
 		dead = true;
+		simStats->LogDeathStarved(symbol);
 		return;
 	}
 
@@ -173,6 +174,8 @@ void Organism::consumeFood() {
 	food -= foodThreshold;
 	if(food < 0) {
 		dead = true;
+		simStats->LogDeathStarved(symbol);
+		return;
 	}
 
 	if(food > bonusChance) {
@@ -185,6 +188,7 @@ void Organism::consumeFood() {
 	//we can't have a random-death chance here (for now for easier stablization)
 	if(rand() % 100 > (food/bonusChance) * 100) {
 		dead = true;
+		simStats->LogDeathMisfortune(symbol);
 	}
 }
 

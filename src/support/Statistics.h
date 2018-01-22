@@ -9,7 +9,6 @@
 #define SUPPORT_STATISTICS_H_
 
 #include "StatisticTick.h"
-#include "../Organism.h"
 
 /*	Statistics info
  *
@@ -49,21 +48,22 @@ public:
 	virtual ~Statistics();
 
 	//Controls statistic data collection and storage
-	void LogTick(int tickNum, Organism* &geneticPool);
+	void LogTick(int tickNum);
 	void LogStartCount(string speciesName, string speciesSymbol);
-	void LogSuccessfulHunt(string attackingSpeciesName, string defendingSpeciesName);
-	void LogFailedHunt(string attackingSpeciesName, string defendingSpeciesName);
+	void LogSuccessfulHunt(string attackingSpeciesSymbol, string defendingSpeciesSymbol);
+	void LogFailedHunt(string attackingSpeciesSymbol, string defendingSpeciesSymbol);
 	void LogDeathStarved(string speciesSymbol);
 	void LogDeathMisfortune(string speciesSymbol);
 	void LogDeathOverpopulation(string speciesSymbol);
 	void LogBirth(string speciesSymbol);
-	void LogEndCount(string speciesSymbol);
-	void EndTick();
+	void LogEndCount();
+
+	void SaveStatisticsToFile(string filedir = "files/output/stats/");
 
 private:
-	vector<StatisticTick> recordedTickData;
+	int getCurrentIndex();
 
-	StatisticTick* currentTickData;
+	vector<StatisticTick> recordedTickData;
 };
 
 #endif /* SUPPORT_STATISTICS_H_ */

@@ -100,6 +100,9 @@ void PopulationManager::end() {
 }
 
 void PopulationManager::tickTurn() {
+	//log statistics
+	simStats->LogTick(tick);
+
 	//clear prior cache data
 	for(unsigned int i=0; i<organismTemplates.size(); i++) {
 		speciesGroups.at(i).clear();
@@ -110,6 +113,11 @@ void PopulationManager::tickTurn() {
 	//populate caches for each species
 	for(unsigned int i=0; i < poolSize; i++) {
 		Organism* self = &geneticPool[i];
+
+		if(!self->dead) {
+			simStats->LogStartCount(self->name, self->symbol);
+		}
+
 		speciesGroups.at(templateIndexes[self->symbol]).push_back(self);
 	}
 
@@ -139,7 +147,7 @@ void PopulationManager::tickTurn() {
 		bool eatPlants = self->eatsPlants;
 		bool eatAnimals = self->eatsAnimals;
 		bool eatFungi = self->eatsFungus;
-		bool eatDead = self->eatsDead;
+		//bool eatDead = self->eatsDead;TODO: Unused
 		bool eatOwnKind = self->cannibal;
 
 		//the dead can't attack or eat...
@@ -232,6 +240,9 @@ void PopulationManager::tickTurn() {
 					(successfulAgility && successfulIntelligence) ||
 					(successfulToughness && successfulIntelligence)) {
 				self->eat(prey.at(i));
+				simStats->LogSuccessfulHunt(self->symbol, prey.at(i)->symbol);
+			} else {
+				simStats->LogFailedHunt(self->symbol, prey.at(i)->symbol);
 			}
 
 			//if we've made it here, we've truly made an attempt to hunt our target
@@ -258,7 +269,7 @@ void PopulationManager::tickTurn() {
 			continue;
 		}
 
-		geneticPool[i].consumeFood();
+		geneticPool[i].consumeFood(simStats);
 
 		//cull "space" strained species here
 		if(!geneticPool[i].dead) {
@@ -272,6 +283,7 @@ void PopulationManager::tickTurn() {
 
 			if(rand() % 100 < usedPercent * 90) {
 				geneticPool[i].dead = true;
+				simStats->LogDeathOverpopulation(geneticPool[i].symbol);
 			}
 		}
 	}
@@ -372,12 +384,16 @@ void PopulationManager::tickTurn() {
 			deadCreatures.erase(deadCreatures.begin());
 			newBaby->beBorn(self, partner);
 			babiesMade++;
+			simStats->LogBirth(self->symbol);
 		}
 	}
 
 	if(tick % tickInfoFrequency == 0 || tick == 1) {
 		//cout<<"Made "<<babiesMade<<" children this turn."<<endl;
 	}
+
+	//finish up stat collection for the tick
+	simStats->LogEndCount();
 }
 
 int PopulationManager::countPlants() {

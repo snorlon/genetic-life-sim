@@ -13,6 +13,8 @@
 
 struct StatisticTick {
 public:
+	StatisticTick() : tickNumber(0){}
+
 	int tickNumber;
 	vector<StatisticSpecies> speciesData;
 	/* Holds:

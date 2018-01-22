@@ -11,6 +11,8 @@
 #include <string>
 #include <stdlib.h>
 
+#include "support/Statistics.h"
+
 enum ArchType { plant, animal, fungus };
 enum Stat { Toughness, Agility, Intelligence };
 
@@ -28,7 +30,7 @@ public:
 	//takes in a prey if a nonplant, will consume prey if they are passed and take in their food
 	void eat(Organism* prey = NULL);
 	//will kill a creature if they have insufficient food left to survive
-	void consumeFood();
+	void consumeFood(Statistics* simStats);
 	void reproduce();
 
 
