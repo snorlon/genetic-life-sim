@@ -57,20 +57,6 @@ void FileReader::readParameters(Parameters* parameters, string filename) {
 
 	file.close();
 
-	//TODO remove this later, will be reusing it for saving output data
-	/*ofstream file2;
-	file2.open(filename.c_str(),fstream::out | fstream::trunc);
-	if(file2.is_open()) {
-		cout<<"File made!"<<endl;
-		file2 << "Creating file!";
-		file2.close();
-	}
-	else {
-		cout<<"OH NO"<<endl;
-	}
-
-	file2.close();*/
-
 }
 
 void FileReader::readConfig(Config* config) {

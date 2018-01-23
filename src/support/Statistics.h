@@ -49,7 +49,8 @@ public:
 
 	//Controls statistic data collection and storage
 	void LogTick(int tickNum);
-	void LogStartCount(string speciesName, string speciesSymbol);
+	void LogStart(string speciesName, string speciesSymbol);
+	void LogStartCount(string speciesSymbol);
 	void LogSuccessfulHunt(string attackingSpeciesSymbol, string defendingSpeciesSymbol);
 	void LogFailedHunt(string attackingSpeciesSymbol, string defendingSpeciesSymbol);
 	void LogDeathStarved(string speciesSymbol);

@@ -94,6 +94,7 @@ void PopulationManager::run() {
 
 void PopulationManager::end() {
 	//Output results here, such as population changes, organisms consumed, organisms killed, and genetic distribution across population
+	simStats->SaveStatisticsToFile();
 
 	delete[] geneticPool;
 	geneticPool = NULL;
@@ -106,6 +107,7 @@ void PopulationManager::tickTurn() {
 	//clear prior cache data
 	for(unsigned int i=0; i<organismTemplates.size(); i++) {
 		speciesGroups.at(i).clear();
+		simStats->LogStart(organismTemplates.at(i)->name, organismTemplates.at(i)->symbol);
 	}
 
 	creatureTurnOrder.clear();
@@ -115,7 +117,7 @@ void PopulationManager::tickTurn() {
 		Organism* self = &geneticPool[i];
 
 		if(!self->dead) {
-			simStats->LogStartCount(self->name, self->symbol);
+			simStats->LogStartCount(self->symbol);
 		}
 
 		speciesGroups.at(templateIndexes[self->symbol]).push_back(self);
